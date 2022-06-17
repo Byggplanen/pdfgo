@@ -78,42 +78,34 @@ const PDFLayer = L.GridLayer.extend({
 
     const page: PDFJS.PDFPageProxy = await this._pagePromise;
 
-    console.log(
-      "key",
-      key,
-      "tilecoords",
-      this._keyToTileCoords(key),
-      "bounds",
-      this._tileCoordsToBounds(this._keyToTileCoords(key))
-    );
-
     const mtCoords = this._keyToTileCoords(key);
     const mtBounds = L.latLngBounds(
       children(mtCoords)
         .flatMap((tile) => children(tile))
         .map((tile) => this._tileCoordsToBounds(tile))
     );
+
     const zoom = mtCoords.z + 2;
 
-    const layerBoundsBottomLeft = this._map.project(
+    // We use a pixel coordinate system, not cartesian, so y is inverted
+    const layerBoundsTopLeft = this._map.project(
       this.options.bounds.getSouthWest(),
       zoom
     );
-
-    const tileTopRight = this._map.project(mtBounds.getNorthEast(), zoom);
-    const tileBottomLeft = this._map.project(mtBounds.getSouthWest(), zoom);
+    const tileTopLeft = this._map.project(mtBounds.getSouthWest(), zoom);
+    const tileBottomRight = this._map.project(mtBounds.getNorthEast(), zoom);
 
     const canvas = L.DomUtil.create("canvas");
     const ctx = canvas.getContext("2d")!;
-    canvas.width = tileTopRight.x - tileBottomLeft.x;
-    canvas.height = tileTopRight.y - tileBottomLeft.y;
+    canvas.width = tileBottomRight.x - tileTopLeft.x;
+    canvas.height = tileBottomRight.y - tileTopLeft.y;
 
     rescaleCanvas(ctx);
 
     const viewport = page.getViewport({
       scale: computeScale(page, this._map, this.options.bounds, zoom),
-      offsetX: -1 * (tileBottomLeft.x - layerBoundsBottomLeft.x),
-      offsetY: -1 * (tileTopRight.y - layerBoundsBottomLeft.y),
+      offsetX: -1 * (tileTopLeft.x - layerBoundsTopLeft.x),
+      offsetY: -1 * (tileTopLeft.y - layerBoundsTopLeft.y),
     });
 
     await page.render({

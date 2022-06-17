@@ -1,9 +1,9 @@
 import L from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 
-// import PDFLayer from "./PDFLayer";
-// import DebugLayer from "./DebugLayer";
-import PDFRenderer from "./PDFRenderer";
+import PDFLayer from "./PDFLayer";
+import PixelCRS from "./PixelCRS";
+
 import "./style.css";
 
 /// GLOBALS
@@ -14,47 +14,26 @@ const inputEl = document.querySelector<HTMLInputElement>("#pdf-input")!;
 
 /// INIT
 const map = L.map("map", {
-  center: [0, 0],
-  zoom: 0,
-  minZoom: -3,
+  minZoom: 0,
   maxZoom: 5,
-  crs: L.CRS.Simple,
-});
+  crs: PixelCRS,
+}).setView([250, 250], 0);
 
 map.pm.addControls({
   position: "topleft",
 });
 
-// map.addLayer(DebugLayer());
-
 /// HANDLERS
 async function onFileLoad(result: ArrayBuffer) {
   const typedArray = new Uint8Array(result);
 
-  if (pdfLayer && map.hasLayer(pdfLayer)) {
-    // TODO: Does not seem to work
-    map.removeLayer(pdfLayer);
-  }
+  pdfLayer = PDFLayer({
+    pdf: typedArray,
+    page: 1,
+    bounds: new L.LatLngBounds([0, 500], [500, 0]),
+  });
 
-  // pdfLayer = PDFLayer({
-  //   pdf: typedArray,
-  //   page: 1,
-  //   minZoom: map.getMinZoom(),
-  //   maxZoom: map.getMaxZoom(),
-  //   bounds: new L.LatLngBounds([0, 0], [1000, 1000]),
-  // }).addTo(map);
-
-  // pdfLayer.bringToBack();
-
-  const renderer = new PDFRenderer(typedArray);
-  const [imageUrl, width, height] = await renderer.renderPage(1);
-  const bounds: L.LatLngBoundsExpression = [
-    [0, 0],
-    [height, width],
-  ];
-
-  L.imageOverlay(imageUrl, bounds).addTo(map);
-  map.fitBounds(bounds);
+  pdfLayer.addTo(map).bringToFront();
 }
 
 function onFileChange() {
