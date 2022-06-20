@@ -1,39 +1,62 @@
 import L from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 
-import PDFLayer from "./PDFLayer";
+import canvasOverlay, { CanvasOverlay } from "./CanvasOverlay";
+import PDFRenderer from "./PDFRenderer";
 import PixelCRS from "./PixelCRS";
+import DebugLayer from "./DebugLayer";
 
 import "./style.css";
 
 /// GLOBALS
-let pdfLayer: L.GridLayer;
+let renderer: PDFRenderer;
+let overlay: CanvasOverlay;
 
 /// ELEMENTS
 const inputEl = document.querySelector<HTMLInputElement>("#pdf-input")!;
 
 /// INIT
 const map = L.map("map", {
-  minZoom: 0,
-  maxZoom: 5,
+  zoom: -2,
+  minZoom: -2,
+  maxZoom: 2,
   crs: PixelCRS,
-}).setView([250, 250], 0);
+});
+
+map.addLayer(DebugLayer());
 
 map.pm.addControls({
   position: "topleft",
 });
 
 /// HANDLERS
+async function onZoom() {
+  if (!overlay) {
+    return;
+  }
+
+  const canvas = await renderer.renderPage(map.getZoom());
+  overlay.setCanvas(canvas);
+}
+
 async function onFileLoad(result: ArrayBuffer) {
   const typedArray = new Uint8Array(result);
 
-  pdfLayer = PDFLayer({
-    pdf: typedArray,
-    page: 1,
-    bounds: new L.LatLngBounds([0, 500], [500, 0]),
+  renderer = new PDFRenderer({
+    file: typedArray,
+    pageNumber: 1,
+    minZoom: map.getMinZoom(),
   });
 
-  pdfLayer.addTo(map).bringToFront();
+  const canvas = await renderer.renderPage(map.getZoom());
+  const bounds: L.LatLngBoundsExpression = [
+    [0, 0],
+    [canvas.height, canvas.width],
+  ];
+
+  overlay = canvasOverlay(canvas, L.latLngBounds(bounds)).addTo(map);
+
+  map.setView([canvas.height / 2, canvas.width / 2]);
 }
 
 function onFileChange() {
@@ -50,6 +73,5 @@ function onFileChange() {
 }
 
 /// EVENT LISTENERS
-inputEl.addEventListener("change", () => {
-  onFileChange();
-});
+inputEl.addEventListener("change", onFileChange);
+map.on("zoomend", onZoom);
