@@ -4,7 +4,6 @@ import "@geoman-io/leaflet-geoman-free";
 import canvasOverlay, { CanvasOverlay } from "./CanvasOverlay";
 import PDFRenderer from "./PDFRenderer";
 import PixelCRS from "./PixelCRS";
-import DebugLayer from "./DebugLayer";
 
 import "./style.css";
 
@@ -22,8 +21,6 @@ const map = L.map("map", {
   maxZoom: 2,
   crs: PixelCRS,
 });
-
-map.addLayer(DebugLayer());
 
 map.pm.addControls({
   position: "topleft",
