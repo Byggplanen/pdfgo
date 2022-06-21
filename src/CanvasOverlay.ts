@@ -1,13 +1,14 @@
-import L, { DomUtil } from "leaflet";
+import L from "leaflet";
 
 type CanvasOverlayType = L.Layer & {
   setCanvas(canvas: HTMLCanvasElement): void;
+  getBounds(): L.LatLngBounds;
 };
 
 // Layer that overlays the given canvas, inspired by L.imageOverlay
 const CanvasOverlay = L.Layer.extend({
   initialize(canvas: HTMLCanvasElement, bounds: L.LatLngBounds) {
-    this._container = DomUtil.create("div");
+    this._container = L.DomUtil.create("div");
     this._canvas = canvas;
     this._container.appendChild(this._canvas);
     this._bounds = bounds;
@@ -37,6 +38,10 @@ const CanvasOverlay = L.Layer.extend({
     this._container.appendChild(canvas);
     this._canvas = canvas;
     this._initCanvas();
+  },
+
+  getBounds() {
+    return this._bounds;
   },
 
   _animateZoom(e: L.ZoomAnimEvent) {

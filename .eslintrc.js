@@ -13,5 +13,11 @@ module.exports = {
   plugins: ["@typescript-eslint"],
   rules: {
     "no-underscore-dangle": "off",
+    "no-restricted-syntax": [
+      "error",
+      "ForInStatement",
+      "LabeledStatement",
+      "WithStatement",
+    ],
   },
 };
