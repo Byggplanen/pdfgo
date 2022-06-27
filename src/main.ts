@@ -1,10 +1,11 @@
 import L from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 
-import canvasOverlay, { CanvasOverlay } from "./CanvasOverlay";
+import { canvasOverlay, CanvasOverlay } from "./plugins/CanvasOverlay";
 import PDFRenderer from "./PDFRenderer";
-import PixelCRS from "./PixelCRS";
+import PixelCRS from "./plugins/PixelCRS";
 import PDFExporter, { GeomanLayer } from "./PDFExporter";
+import { cloudPolylineRenderer } from "./plugins/CloudPolyline";
 
 import "./style.css";
 
@@ -12,7 +13,8 @@ import "./style.css";
 const PAGE_NUMBER = 1;
 
 /// GLOBALS
-let renderer: PDFRenderer;
+const cloudRenderer = cloudPolylineRenderer();
+let pdfRenderer: PDFRenderer;
 let exporter: PDFExporter;
 let overlay: CanvasOverlay;
 
@@ -34,20 +36,20 @@ async function onZoom() {
     return;
   }
 
-  const canvas = await renderer.renderPage(map.getZoom());
+  const canvas = await pdfRenderer.renderPage(map.getZoom());
   overlay.setCanvas(canvas);
 }
 
 async function onFileLoad(result: ArrayBuffer, name: string) {
   const typedArray = new Uint8Array(result);
 
-  renderer = new PDFRenderer({
+  pdfRenderer = new PDFRenderer({
     file: typedArray,
     pageNumber: PAGE_NUMBER,
     minZoom: map.getMinZoom(),
   });
 
-  const canvas = await renderer.renderPage(map.getZoom());
+  const canvas = await pdfRenderer.renderPage(map.getZoom());
   const bounds: L.LatLngBoundsExpression = [
     [0, 0],
     [canvas.height, canvas.width],
@@ -66,6 +68,27 @@ async function onFileLoad(result: ArrayBuffer, name: string) {
     drawCircleMarker: false,
     cutPolygon: false,
   });
+
+  const cloudActions = [
+    "finish" as const,
+    "removeLastVertex" as const,
+    "cancel" as const,
+  ];
+
+  map.pm.Toolbar.copyDrawControl("Polygon", {
+    name: "CloudPolygon",
+    block: "draw",
+    title: "Draw Revision Cloud",
+    className: "leaflet-cloud-icon",
+    actions: cloudActions,
+  });
+
+  map.pm.enableDraw("CloudPolygon", {
+    pathOptions: { renderer: cloudRenderer },
+    hintlineStyle: { renderer: cloudRenderer },
+    templineStyle: { renderer: cloudRenderer },
+  });
+  map.pm.disableDraw();
 }
 
 function onFileChange() {
@@ -88,10 +111,20 @@ async function onDownloadClick() {
 
   const layers = map.pm.getGeomanLayers() as GeomanLayer[];
   await exporter.drawLayers(layers, PAGE_NUMBER - 1);
-  // await exporter.downloadPdf();
+  await exporter.downloadPdf();
+}
+
+function onShapeCreate({ shape, layer }: { shape: string; layer: L.Layer }) {
+  if (!(layer instanceof L.Polyline)) {
+    console.log(shape, "not polyline");
+    return;
+  }
+
+  console.log(shape, layer);
 }
 
 /// EVENT LISTENERS
 inputEl.addEventListener("change", onFileChange);
 downloadBtn.addEventListener("click", onDownloadClick);
 map.on("zoomend", onZoom);
+map.on("pm:create", onShapeCreate);

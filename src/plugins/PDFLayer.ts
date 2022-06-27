@@ -1,4 +1,10 @@
-// https://github.com/kurtraschke/L.GridLayer.PDFLayer
+/*
+ * PDFLayer.ts - An extension of L.GridLayer that renders a PDF
+ * with tiled HTML canvases using PDF.js.
+ *
+ * Based on L.GridLayer.PDFLayer (https://github.com/kurtraschke/L.GridLayer.PDFLayer)
+ * Original implementation by Kurt Raschke <@kurtraschke>
+ */
 
 import L from "leaflet";
 import * as PDFJS from "pdfjs-dist";
@@ -6,6 +12,12 @@ import * as PDFJS from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 
 PDFJS.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+type PDFLayerOptions = {
+  pdf: Uint8Array;
+  page: number;
+  bounds: L.LatLngBounds;
+} & L.GridLayerOptions;
 
 const rescaleCanvas = (ctx: CanvasRenderingContext2D) => {
   const devicePixelRatio = window.devicePixelRatio || 1;
@@ -68,8 +80,25 @@ const children = (tile: L.Coords) => {
   return newChildren;
 };
 
-const PDFLayer = L.GridLayer.extend({
-  _metatileCanvases: {},
+class PDFLayer extends L.GridLayer {
+  _metatileCanvases: Record<string, CanvasImageSource> = {};
+
+  _documentPromise: Promise<PDFJS.PDFDocumentProxy>;
+
+  _pagePromise: Promise<PDFJS.PDFPageProxy>;
+
+  options: PDFLayerOptions;
+
+  constructor(options: PDFLayerOptions) {
+    super(options);
+    this.options = options;
+
+    const { pdf: pdfData, page } = options;
+    this._documentPromise = PDFJS.getDocument(pdfData).promise;
+    this._pagePromise = this._documentPromise.then(
+      (pdf: PDFJS.PDFDocumentProxy) => pdf.getPage(page)
+    );
+  }
 
   async _getMetatileCanvas(key: string) {
     if (this._metatileCanvases[key]) {
@@ -117,7 +146,7 @@ const PDFLayer = L.GridLayer.extend({
 
     this._metatileCanvases[key] = canvas;
     return canvas;
-  },
+  }
 
   async _drawTile(
     tile: HTMLCanvasElement,
@@ -145,7 +174,7 @@ const PDFLayer = L.GridLayer.extend({
     const { x: destWidth, y: destHeight } = size;
 
     ctx.drawImage(
-      metatileCanvas,
+      metatileCanvas!,
       sourceX,
       sourceY,
       sourceWidth,
@@ -157,7 +186,7 @@ const PDFLayer = L.GridLayer.extend({
     );
 
     done(undefined, tile);
-  },
+  }
 
   createTile(coords: L.Coords, done: L.DoneCallback) {
     const tile = L.DomUtil.create("canvas", "leaflet-tile");
@@ -167,24 +196,11 @@ const PDFLayer = L.GridLayer.extend({
 
     this._drawTile(tile, coords, done);
     return tile;
-  },
-});
+  }
+}
 
-PDFLayer.addInitHook(function initHook(this: any) {
-  const { pdf: pdfData } = this.options;
-  const { page } = this.options;
-  this._documentPromise = PDFJS.getDocument(pdfData).promise;
-  this._pagePromise = this._documentPromise.then(
-    (pdf: PDFJS.PDFDocumentProxy) => pdf.getPage(page)
-  );
-});
-
-function pdfLayer(
-  options: { pdf: Uint8Array; page: number } & L.GridLayerOptions
-) {
-  // @ts-ignore
+function pdfLayer(options: PDFLayerOptions) {
   return new PDFLayer(options);
-  // @ts-enable
 }
 
 export default pdfLayer;

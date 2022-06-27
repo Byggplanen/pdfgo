@@ -1,6 +1,6 @@
 import L from "leaflet";
 
-const DebugLayer = L.GridLayer.extend({
+export class DebugLayer extends L.GridLayer {
   createTile(coords: L.Coords) {
     const tile = L.DomUtil.create("div");
     tile.style.outline = "1px solid blue";
@@ -9,13 +9,9 @@ const DebugLayer = L.GridLayer.extend({
     console.log("DEBUG: Drawing", this._tileCoordsToKey(coords));
 
     return tile;
-  },
-});
-
-function debugLayer(options?: L.GridLayerOptions): L.GridLayer {
-  // @ts-ignore
-  return new DebugLayer(options);
-  // @ts-enable
+  }
 }
 
-export default debugLayer;
+export function debugLayer(options?: L.GridLayerOptions) {
+  return new DebugLayer(options);
+}

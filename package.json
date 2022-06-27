@@ -26,6 +26,7 @@
     "@geoman-io/leaflet-geoman-free": "^2.13.0",
     "leaflet": "^1.8.0",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^2.14.305"
+    "pdfjs-dist": "^2.14.305",
+    "svg-pathdata": "^6.0.3"
   }
 }
