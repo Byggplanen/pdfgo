@@ -31,3 +31,7 @@
 .leaflet-cloud-icon {
   background-image: url(assets/cloud.svg);
 }
+
+.leaflet-ruler-text {
+  font-size: 1.1em;
+}

@@ -17,11 +17,4 @@ declare module "leaflet" {
   interface SVG {
     _setPath(layer: L.Layer, path: string): void;
   }
-
-  // Leaflet.PolylineDecorator
-  namespace Symbol {
-    interface MarkerOptions {
-      angleCorrection: number;
-    }
-  }
 }

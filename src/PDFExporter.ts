@@ -32,6 +32,7 @@ import {
 import markerIcon from "./assets/marker-icon.png";
 import { generateCloudPathFromPoints } from "./plugins/CloudPolyline/cloud-points";
 import { CloudPolyline } from "./plugins/CloudPolyline";
+import { toPDFCoords, toPDFRadius } from "./plugins/units";
 
 type PDFExporterProps = {
   file: Uint8Array;
@@ -101,9 +102,15 @@ export default class PDFExporter {
     this.loadAssets();
   }
 
+  async getPage(pageNumber: number): Promise<PDFPage> {
+    const pdf = await this.pdf;
+    return pdf.getPage(pageNumber);
+  }
+
   async drawLayers(layers: GeomanLayer[], pageNumber: number) {
     const pdf = await this.pdf;
     const page = pdf.getPage(pageNumber);
+    console.log(page.getWidth());
 
     const geo = this.toGeoJSON(layers, page);
     const geoPdf = this.geoJSONToPDFCoords(geo, page);
@@ -357,7 +364,11 @@ export default class PDFExporter {
       switch (geo.properties.shape) {
         case "Circle": {
           const circle = layer as L.Circle;
-          geo.properties.radius = this.toPDFRadius(circle.getRadius(), page);
+          geo.properties.radius = toPDFRadius(
+            circle.getRadius(),
+            page,
+            this.canvasWidth
+          );
           break;
         }
         case "Text":
@@ -375,27 +386,6 @@ export default class PDFExporter {
     };
   }
 
-  private toPDFCoords(
-    point: GeoJSON.Position,
-    page: PDFPage
-  ): GeoJSON.Position {
-    const { width, height } = page.getMediaBox();
-    const factor = width / this.canvasWidth;
-    const x = point[0] * factor;
-
-    // PDF origin is in bottom left, but GeoJSON in top left
-    const y = height - point[1] * factor;
-
-    return [x, y];
-  }
-
-  private toPDFRadius(radius: number, page: PDFPage): number {
-    const { width } = page.getMediaBox();
-    const factor = width / this.canvasWidth;
-
-    return radius * factor;
-  }
-
   // Convert GeoJSON in leaflet scale to pdf scale coordinates
   // Does not deepcopy so changes to the returned GeoJSON
   // might be reflected in the given GeoJSON.
@@ -411,7 +401,8 @@ export default class PDFExporter {
           } as GeoJSON.Feature<GeoJSON.Polygon, FeatureProperties>;
 
           newFeature.geometry.coordinates = newFeature.geometry.coordinates.map(
-            (ring) => ring.map((coords) => this.toPDFCoords(coords, page))
+            (ring) =>
+              ring.map((coords) => toPDFCoords(coords, page, this.canvasWidth))
           );
 
           return newFeature;
@@ -422,7 +413,7 @@ export default class PDFExporter {
           } as GeoJSON.Feature<GeoJSON.LineString, FeatureProperties>;
 
           newFeature.geometry.coordinates = newFeature.geometry.coordinates.map(
-            (coords) => this.toPDFCoords(coords, page)
+            (coords) => toPDFCoords(coords, page, this.canvasWidth)
           );
 
           return newFeature;
@@ -432,9 +423,10 @@ export default class PDFExporter {
             ...feature,
           } as GeoJSON.Feature<GeoJSON.Point, FeatureProperties>;
 
-          newFeature.geometry.coordinates = this.toPDFCoords(
+          newFeature.geometry.coordinates = toPDFCoords(
             newFeature.geometry.coordinates,
-            page
+            page,
+            this.canvasWidth
           );
 
           return newFeature;

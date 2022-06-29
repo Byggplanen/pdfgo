@@ -8,6 +8,7 @@ import PDFExporter, { GeomanLayer } from "./PDFExporter";
 import { cloudPolylineRenderer } from "./plugins/CloudPolyline";
 
 import "./style.css";
+import Ruler from "./plugins/Measure/Ruler";
 
 /// CONSTANTS
 const PAGE_NUMBER = 1;
@@ -55,6 +56,8 @@ async function onFileLoad(result: ArrayBuffer, name: string) {
     [canvas.height, canvas.width],
   ];
 
+  console.log("circumference", canvas.height * 2 + canvas.width * 2);
+
   overlay = canvasOverlay(canvas, L.latLngBounds(bounds)).addTo(map);
   exporter = new PDFExporter({
     file: typedArray,
@@ -67,6 +70,10 @@ async function onFileLoad(result: ArrayBuffer, name: string) {
     position: "topleft",
     drawCircleMarker: false,
     cutPolygon: false,
+  });
+
+  map.pm.setGlobalOptions({
+    allowSelfIntersection: false,
   });
 
   const cloudActions = [
@@ -85,10 +92,14 @@ async function onFileLoad(result: ArrayBuffer, name: string) {
 
   map.pm.enableDraw("CloudPolygon", {
     pathOptions: { renderer: cloudRenderer },
-    hintlineStyle: { renderer: cloudRenderer },
+    hintlineStyle: { color: "#3388ff", renderer: cloudRenderer },
     templineStyle: { renderer: cloudRenderer },
+    allowSelfIntersection: false,
   });
   map.pm.disableDraw();
+
+  const page = await exporter.getPage(PAGE_NUMBER - 1);
+  const yes = new Ruler(map, page, canvas.width);
 }
 
 function onFileChange() {
@@ -114,13 +125,8 @@ async function onDownloadClick() {
   await exporter.downloadPdf();
 }
 
-function onShapeCreate({ shape, layer }: { shape: string; layer: L.Layer }) {
-  if (!(layer instanceof L.Polyline)) {
-    console.log(shape, "not polyline");
-    return;
-  }
-
-  console.log(shape, layer);
+function onShapeCreate({ layer }: { shape: string; layer: L.Layer }) {
+  console.log(layer);
 }
 
 /// EVENT LISTENERS

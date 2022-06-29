@@ -6,7 +6,7 @@ type Point = {
 };
 
 function distance(p1: Point, p2: Point): number {
-  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+  return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 }
 
 function lerp(x1: number, x2: number, t: number): number {
@@ -94,10 +94,12 @@ export function generateCloudPathFromPath(
 
   // Polylines should only consist of move to, line to and close path
   // commands, but filtering just in case
+  /* eslint-disable no-bitwise */
   const relevant = SVGPathData.MOVE_TO | SVGPathData.LINE_TO;
   const filteredPoints = pathData.commands.filter(
     (command) => command.type & relevant
   ) as Point[];
+  /* eslint-enable no-bitwise */
 
   // In the case of a polygon, we need to repeat the first point
   // in place of the close path command
