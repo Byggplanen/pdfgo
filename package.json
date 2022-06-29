@@ -25,8 +25,10 @@
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.13.0",
     "@types/leaflet-textpath": "^1.2.1",
+    "@types/lodash": "^4.14.182",
     "leaflet": "^1.8.0",
     "leaflet-textpath": "Byggplanen/Leaflet.TextPath",
+    "lodash": "^4.17.21",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^2.14.305",
     "svg-pathdata": "^6.0.3"

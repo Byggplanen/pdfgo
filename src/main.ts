@@ -6,9 +6,9 @@ import PDFRenderer from "./PDFRenderer";
 import PixelCRS from "./plugins/PixelCRS";
 import PDFExporter, { GeomanLayer } from "./PDFExporter";
 import { cloudPolylineRenderer } from "./plugins/CloudPolyline";
+import addMeasurementsToolbar from "./plugins/Measure";
 
 import "./style.css";
-import Ruler from "./plugins/Measure/Ruler";
 
 /// CONSTANTS
 const PAGE_NUMBER = 1;
@@ -99,7 +99,7 @@ async function onFileLoad(result: ArrayBuffer, name: string) {
   map.pm.disableDraw();
 
   const page = await exporter.getPage(PAGE_NUMBER - 1);
-  const yes = new Ruler(map, page, canvas.width);
+  addMeasurementsToolbar(map, page, canvas.width);
 }
 
 function onFileChange() {

@@ -32,6 +32,6 @@
   background-image: url(assets/cloud.svg);
 }
 
-.leaflet-ruler-text {
+.leaflet-ruler-text, .leaflet-area-text {
   font-size: 1.1em;
 }
