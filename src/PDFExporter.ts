@@ -110,7 +110,6 @@ export default class PDFExporter {
   async drawLayers(layers: GeomanLayer[], pageNumber: number) {
     const pdf = await this.pdf;
     const page = pdf.getPage(pageNumber);
-    console.log(page.getWidth());
 
     const geo = this.toGeoJSON(layers, page);
     const geoPdf = this.geoJSONToPDFCoords(geo, page);

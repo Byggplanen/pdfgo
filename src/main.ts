@@ -56,8 +56,6 @@ async function onFileLoad(result: ArrayBuffer, name: string) {
     [canvas.height, canvas.width],
   ];
 
-  console.log("circumference", canvas.height * 2 + canvas.width * 2);
-
   overlay = canvasOverlay(canvas, L.latLngBounds(bounds)).addTo(map);
   exporter = new PDFExporter({
     file: typedArray,

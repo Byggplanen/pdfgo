@@ -26,7 +26,6 @@ export default class Ruler {
   }
 
   protected init() {
-    console.log(this.shape_name());
     this.map.pm.Toolbar.copyDrawControl("Line", {
       name: this.shape_name(),
       block: "custom",
@@ -43,11 +42,9 @@ export default class Ruler {
     this.map.on("pm:create", this.handleCreateShape, this);
     this.map.on("pm:drawend", this.handleDisable, this);
 
-    console.log(this.shape_name());
     this.map.pm.enableDraw(this.shape_name(), {
       hideMiddleMarkers: true,
       allowSelfIntersection: false,
-      editable: false,
       // TODO: Add renderer
     });
 
@@ -56,7 +53,6 @@ export default class Ruler {
   }
 
   private handleDisable() {
-    console.log("Disabled", this.shape_name());
     this.map.off("pm:drawstart", this.handleDrawStart, this);
     this.map.off("pm:create", this.handleCreateShape, this);
     this.map.off("pm:drawend", this.handleDisable, this);

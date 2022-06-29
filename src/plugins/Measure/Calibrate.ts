@@ -2,6 +2,7 @@ import L from "leaflet";
 import Ruler from "./Ruler";
 
 export default class Calibrate extends Ruler {
+  // eslint-disable-next-line class-methods-use-this
   protected shape_name(): string {
     return "Calibrate";
   }

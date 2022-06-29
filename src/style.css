@@ -32,6 +32,14 @@
   background-image: url(assets/cloud.svg);
 }
 
-.leaflet-ruler-text, .leaflet-area-text {
+.leaflet-ruler-text,
+.leaflet-area-text {
   font-size: 1.1em;
+  font-weight: 600;
+}
+
+.leaflet-area-text {
+  background: none;
+  border: none;
+  box-shadow: none;
 }
