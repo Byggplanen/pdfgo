@@ -6,18 +6,20 @@ import PDFRenderer from "./PDFRenderer";
 import PixelCRS from "./plugins/PixelCRS";
 import PDFExporter, { GeomanLayer } from "./PDFExporter";
 import { cloudPolylineRenderer } from "./plugins/CloudPolyline";
-import addMeasurementsToolbar from "./plugins/Measure";
+import Measurements from "./plugins/Measure";
 
 import "./style.css";
 
 /// CONSTANTS
 const PAGE_NUMBER = 1;
+const ACTUAL_LENGTH = "20m";
 
 /// GLOBALS
 const cloudRenderer = cloudPolylineRenderer();
 let pdfRenderer: PDFRenderer;
 let exporter: PDFExporter;
 let overlay: CanvasOverlay;
+let measurements: Measurements;
 
 /// ELEMENTS
 const inputEl = document.querySelector<HTMLInputElement>("#pdf-input")!;
@@ -39,6 +41,10 @@ async function onZoom() {
 
   const canvas = await pdfRenderer.renderPage(map.getZoom());
   overlay.setCanvas(canvas);
+}
+
+function onCalibrate(length: number) {
+  measurements.adjustScale(length, ACTUAL_LENGTH);
 }
 
 async function onFileLoad(result: ArrayBuffer, name: string) {
@@ -97,7 +103,7 @@ async function onFileLoad(result: ArrayBuffer, name: string) {
   map.pm.disableDraw();
 
   const page = await exporter.getPage(PAGE_NUMBER - 1);
-  addMeasurementsToolbar(map, page, canvas.width);
+  measurements = new Measurements(map, page, canvas.width, onCalibrate);
 }
 
 function onFileChange() {

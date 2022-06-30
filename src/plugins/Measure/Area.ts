@@ -16,6 +16,16 @@ export default class Area {
     className: "leaflet-area-text",
   };
 
+  // The default unit of pdf-lib is 1 pt = 1/72 in
+  // ^2 is added in `getArea()`.
+  private unit: string = "pt";
+
+  // Scale factor for the sides of the polygon, not the area
+  private scaleFactor: number = 1;
+
+  // Also contains layers that have been removed
+  private layers: L.Polygon[] = [];
+
   constructor(
     private map: L.Map,
     private page: PDFPage,
@@ -43,6 +53,14 @@ export default class Area {
     this.map.pm.Toolbar.setButtonDisabled(Area.SHAPE_NAME, true);
   }
 
+  updateScale(scaleFactor: number, unit: string) {
+    this.scaleFactor = scaleFactor;
+    this.unit = unit;
+    for (const layer of this.layers) {
+      layer.bindTooltip(this.getArea(layer), Area.TOOLTIP_OPTIONS);
+    }
+  }
+
   private handleDisable() {
     this.map.off("pm:create", this.handleCreateShape, this);
     this.map.off("pm:drawend", this.handleDisable, this);
@@ -63,6 +81,8 @@ export default class Area {
         polygon.bindTooltip(this.getArea(polygon), Area.TOOLTIP_OPTIONS);
       }, Area.THROTTLE_MS)
     );
+
+    this.layers.push(polygon);
   }
 
   // Only supports simple polygons. No cuts and no overlapping.
@@ -76,13 +96,13 @@ export default class Area {
     );
 
     let total: number = 0;
-    for (let i = 0; i < pdfCoordinates.length; ++i) {
+    for (let i = 0; i < pdfCoordinates.length; i += 1) {
       const [x1, y1] = pdfCoordinates[i];
       const [x2, y2] = pdfCoordinates[(i + 1) % pdfCoordinates.length];
       total += x1 * y2 - x2 * y1;
     }
 
-    total = Math.abs(total) / 2;
-    return total.toFixed(1);
+    total = (this.scaleFactor ** 2 * Math.abs(total)) / 2;
+    return `${total.toFixed(1)} ${this.unit}²`;
   }
 }

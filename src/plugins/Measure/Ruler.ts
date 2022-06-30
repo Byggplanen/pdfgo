@@ -17,6 +17,14 @@ export default class Ruler {
     },
   };
 
+  // The default unit of pdf-lib is 1 pt = 1/72 in
+  private unit: string = "pt";
+
+  private scaleFactor: number = 1;
+
+  // Also contains layers that have been removed
+  private layers: L.Polyline[] = [];
+
   constructor(
     private map: L.Map,
     private page: PDFPage,
@@ -52,6 +60,15 @@ export default class Ruler {
     this.map.pm.Toolbar.setButtonDisabled(this.shape_name(), true);
   }
 
+  updateScale(scaleFactor: number, unit: string) {
+    this.scaleFactor = scaleFactor;
+    this.unit = unit;
+    for (const layer of this.layers) {
+      layer.setText(null);
+      layer.setText(this.getFormattedDist(layer), Ruler.TEXT_OPTIONS);
+    }
+  }
+
   private handleDisable() {
     this.map.off("pm:drawstart", this.handleDrawStart, this);
     this.map.off("pm:create", this.handleCreateShape, this);
@@ -65,15 +82,17 @@ export default class Ruler {
     layer: L.Layer;
   }): void {
     const polyline = layer as L.Polyline;
-    polyline.setText(this.getDist(polyline), Ruler.TEXT_OPTIONS);
+    polyline.setText(this.getFormattedDist(polyline), Ruler.TEXT_OPTIONS);
 
     polyline.on(
       "pm:change",
       throttle(() => {
         polyline.setText(null);
-        polyline.setText(this.getDist(polyline), Ruler.TEXT_OPTIONS);
+        polyline.setText(this.getFormattedDist(polyline), Ruler.TEXT_OPTIONS);
       }, Ruler.THROTTLE_MS)
     );
+
+    this.layers.push(polyline);
   }
 
   private handleDrawStart({
@@ -94,17 +113,17 @@ export default class Ruler {
       throttle(() => {
         const hintline = this.map.pm.Draw[this.shape_name()]._hintline;
         hintline.setText(null);
-        hintline.setText(this.getDist(hintline), Ruler.TEXT_OPTIONS);
+        hintline.setText(this.getFormattedDist(hintline), Ruler.TEXT_OPTIONS);
       }, Ruler.THROTTLE_MS)
     );
   }
 
-  protected getDist(layer: L.Polyline): string {
+  protected getPointDist(layer: L.Polyline): number {
     const geo = layer.toGeoJSON();
     const coordinates = geo.geometry.coordinates as GeoJSON.Position[];
 
     if (coordinates.length !== 2) {
-      return "0.0";
+      return 0;
     }
 
     const pdfCoordinates = coordinates.map((coords) =>
@@ -113,8 +132,11 @@ export default class Ruler {
 
     const [x1, y1] = pdfCoordinates[0];
     const [x2, y2] = pdfCoordinates[1];
-    const dist = Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+    return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+  }
 
-    return dist.toFixed(1);
+  protected getFormattedDist(layer: L.Polyline): string {
+    const dist = this.getPointDist(layer) * this.scaleFactor;
+    return `${dist.toFixed(1)} ${this.unit}`;
   }
 }
