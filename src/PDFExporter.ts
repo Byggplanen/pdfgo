@@ -27,6 +27,7 @@ import {
   PDFFont,
   StandardFonts,
   drawSvgPath,
+  concatTransformationMatrix,
 } from "pdf-lib";
 
 import markerIcon from "./assets/marker-icon.png";
@@ -48,7 +49,8 @@ type FeatureProperties = {
     | "Line"
     | "Polygon"
     | "Text"
-    | "CloudPolygon";
+    | "CloudPolygon"
+    | "Ruler";
 
   // Only used when shape is "Text"
   text?: string;
@@ -149,11 +151,11 @@ export default class PDFExporter {
         }
         case "Text": {
           const geometry = feature.geometry as GeoJSON.Point;
-          await this.drawText(
-            geometry.coordinates,
-            feature.properties.text!,
-            page
-          );
+          await this.drawText({
+            coordinates: geometry.coordinates,
+            text: feature.properties.text!,
+            page,
+          });
           break;
         }
         case "CloudPolygon": {
@@ -161,6 +163,16 @@ export default class PDFExporter {
           operators.push(
             ...PDFExporter.drawCloudPolygon(geometry.coordinates, page)
           );
+          break;
+        }
+        case "Ruler": {
+          const geometry = feature.geometry as GeoJSON.LineString;
+          const lineOperators = await this.drawRuler(
+            geometry.coordinates,
+            feature.properties.text!,
+            page
+          );
+          operators.push(...lineOperators);
           break;
         }
         default:
@@ -191,36 +203,79 @@ export default class PDFExporter {
     this.markerImage = pdf.embedPng(markerBytes);
   }
 
-  private async drawText(
-    coordinates: GeoJSON.Position,
-    text: string,
-    page: PDFPage
-  ): Promise<void> {
+  // Rotation in radians
+  private async drawText({
+    coordinates,
+    text,
+    page,
+    centerOrigin = false,
+    rotation = 0,
+    centerOffsetY = 0,
+  }: {
+    coordinates: GeoJSON.Position;
+    text: string;
+    page: PDFPage;
+    centerOrigin?: boolean;
+    rotation?: number;
+    centerOffsetY?: number; // Only used if centerOrigin is true
+  }): Promise<void> {
     const font = await this.font;
     if (!font) {
       throw new Error("Font undefined");
     }
 
-    const [x, y] = coordinates;
+    let [x, y] = coordinates;
     const width = font.widthOfTextAtSize(text, PDFExporter.FONT_SIZE);
     const height = font.heightAtSize(PDFExporter.FONT_SIZE);
 
+    if (centerOrigin) {
+      page.pushOperators(
+        pushGraphicsState(),
+
+        // Translate back
+        concatTransformationMatrix(1, 0, 0, 1, x, y),
+
+        // Rotate around origin
+        concatTransformationMatrix(
+          Math.cos(rotation),
+          Math.sin(rotation),
+          -Math.sin(rotation),
+          Math.cos(rotation),
+          0,
+          0
+        ),
+
+        // Translate to move origin to center
+        concatTransformationMatrix(1, 0, 0, 1, -1 * x, -1 * y)
+      );
+
+      x -= width / 2;
+      y -= height / 2 - centerOffsetY;
+    } else {
+      // Move origin to top left instead of bottom left
+      y -= height;
+    }
+
     page.drawRectangle({
       x,
-      y: y - height * 1.5,
+      y,
       width,
-      height: height * 1.5,
+      height,
       color: rgb(1, 1, 1),
     });
 
     page.drawText(text, {
       x,
-      y: y - height,
+      y,
       font,
       size: PDFExporter.FONT_SIZE,
       color: PDFExporter.COLOR,
       lineHeight: PDFExporter.FONT_SIZE,
     });
+
+    if (centerOrigin) {
+      page.pushOperators(popGraphicsState());
+    }
   }
 
   private static drawPolygon(
@@ -325,6 +380,35 @@ export default class PDFExporter {
     });
   }
 
+  private async drawRuler(
+    coordinates: GeoJSON.Position[],
+    text: string,
+    page: PDFPage
+  ): Promise<PDFOperator[]> {
+    const font = await this.font;
+    if (!font) {
+      throw new Error("Font not loaded");
+    }
+
+    const [x1, y1] = coordinates[0];
+    const [x2, y2] = coordinates[1];
+    const width = x2 - x1;
+    const height = y2 - y1;
+    const rotation = Math.atan2(height, width);
+    const center = [x1 + width / 2, y1 + height / 2];
+
+    await this.drawText({
+      coordinates: center,
+      text,
+      page,
+      centerOrigin: true,
+      rotation,
+      centerOffsetY: font.heightAtSize(PDFExporter.FONT_SIZE),
+    });
+
+    return PDFExporter.drawLine(coordinates);
+  }
+
   // Returns a set of operators that together set the opacity of all
   // operators in the given `operators` array.
   private static setOpacity(
@@ -373,6 +457,11 @@ export default class PDFExporter {
         case "Text":
           geo.properties.text = layer.pm.getText();
           break;
+        case "Ruler": {
+          const ruler = layer as L.Polyline;
+          geo.properties.text = ruler._text;
+          break;
+        }
         default:
       }
 
