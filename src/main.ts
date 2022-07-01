@@ -9,7 +9,6 @@ import { cloudPolylineRenderer } from "./plugins/CloudPolyline";
 import Measurements from "./plugins/Measure";
 
 import "./style.css";
-import { generateArrowPathFromPoints } from "./plugins/Measure/arrow-points";
 
 /// CONSTANTS
 const PAGE_NUMBER = 1;
