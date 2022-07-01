@@ -9,6 +9,7 @@ import { cloudPolylineRenderer } from "./plugins/CloudPolyline";
 import Measurements from "./plugins/Measure";
 
 import "./style.css";
+import { generateArrowPathFromPoints } from "./plugins/Measure/arrow-points";
 
 /// CONSTANTS
 const PAGE_NUMBER = 1;
@@ -129,12 +130,7 @@ async function onDownloadClick() {
   await exporter.downloadPdf();
 }
 
-function onShapeCreate({ layer }: { shape: string; layer: L.Layer }) {
-  console.log(layer);
-}
-
 /// EVENT LISTENERS
 inputEl.addEventListener("change", onFileChange);
 downloadBtn.addEventListener("click", onDownloadClick);
 map.on("zoomend", onZoom);
-map.on("pm:create", onShapeCreate);

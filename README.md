@@ -1,5 +1,12 @@
 # pdf-draw
 
+## todo
+- check licensing (mostly icons)
+- remove experimental/unused code
+- support for changing colors (not necessarily GUI)
+- refactor main.ts into class
+- improve enable/disable/toggle behavior of measurements toolbar button
+
 ## resources
 - https://github.com/Lanseria/vue-pdf-useinvite
 - extracting figures from geoman

@@ -59,19 +59,19 @@ export default class Measurements {
         {
           text: "Calibrate",
           onClick: () => {
-            this.calibrate.activate();
+            this.calibrate.enable();
           },
         },
         {
           text: "Ruler",
           onClick: () => {
-            this.ruler.activate();
+            this.ruler.enable();
           },
         },
         {
           text: "Area",
           onClick: () => {
-            this.area.activate();
+            this.area.enable();
           },
         },
       ],

@@ -1,13 +1,5 @@
 import { SVGPathData } from "svg-pathdata";
-
-type Point = {
-  x: number;
-  y: number;
-};
-
-function distance(p1: Point, p2: Point): number {
-  return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-}
+import { Point, distance } from "../Point";
 
 function lerp(x1: number, x2: number, t: number): number {
   return (1 - t) * x1 + t * x2;

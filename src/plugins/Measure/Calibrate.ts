@@ -13,6 +13,9 @@ export default class Calibrate extends Ruler {
     private onCalibrate: CalibrateCallback
   ) {
     super(map, page, canvasWidth);
+
+    // Default pdf-lib unit, 1 pt = 1/72 in
+    this.unit = "pt";
   }
 
   // eslint-disable-next-line class-methods-use-this

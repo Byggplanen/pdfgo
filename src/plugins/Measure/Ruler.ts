@@ -5,6 +5,7 @@ import { PDFPage } from "pdf-lib";
 import throttle from "lodash/throttle";
 
 import { toPDFCoords } from "../units";
+import { ArrowRenderer, arrowRenderer } from "./ArrowRenderer";
 
 export default class Ruler {
   static readonly THROTTLE_MS = 100;
@@ -17,8 +18,10 @@ export default class Ruler {
     },
   };
 
-  // The default unit of pdf-lib is 1 pt = 1/72 in
-  private unit: string = "pt";
+  private arrowRenderer: ArrowRenderer;
+
+  // Show "Uncalibrated" text when undefined
+  protected unit?: string;
 
   private scaleFactor: number = 1;
 
@@ -30,6 +33,7 @@ export default class Ruler {
     private page: PDFPage,
     private canvasWidth: number
   ) {
+    this.arrowRenderer = arrowRenderer();
     this.init();
   }
 
@@ -45,19 +49,18 @@ export default class Ruler {
     return "Ruler";
   }
 
-  activate() {
+  enable() {
     this.map.on("pm:drawstart", this.handleDrawStart, this);
     this.map.on("pm:create", this.handleCreateShape, this);
-    this.map.on("pm:drawend", this.handleDisable, this);
+    this.map.on("pm:drawend", this.deactivate, this);
 
     this.map.pm.enableDraw(this.shape_name(), {
+      pathOptions: { renderer: this.arrowRenderer },
+      hintlineStyle: { color: "#3388ff", renderer: this.arrowRenderer },
+      templineStyle: { renderer: this.arrowRenderer },
       hideMiddleMarkers: true,
       allowSelfIntersection: false,
-      // TODO: Add renderer
     });
-
-    // Hide the button
-    this.map.pm.Toolbar.setButtonDisabled(this.shape_name(), true);
   }
 
   updateScale(scaleFactor: number, unit: string) {
@@ -69,10 +72,10 @@ export default class Ruler {
     }
   }
 
-  private handleDisable() {
+  deactivate() {
     this.map.off("pm:drawstart", this.handleDrawStart, this);
     this.map.off("pm:create", this.handleCreateShape, this);
-    this.map.off("pm:drawend", this.handleDisable, this);
+    this.map.off("pm:drawend", this.deactivate, this);
   }
 
   protected handleCreateShape({
@@ -136,6 +139,10 @@ export default class Ruler {
   }
 
   protected getFormattedDist(layer: L.Polyline): string {
+    if (!this.unit) {
+      return "Uncalibrated";
+    }
+
     const dist = this.getPointDist(layer) * this.scaleFactor;
     return `${dist.toFixed(1)} ${this.unit}`;
   }

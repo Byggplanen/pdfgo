@@ -16,9 +16,8 @@ export default class Area {
     className: "leaflet-area-text",
   };
 
-  // The default unit of pdf-lib is 1 pt = 1/72 in
-  // ^2 is added in `getArea()`.
-  private unit: string = "pt";
+  // Show "Uncalibrated" text when undefined
+  private unit?: string;
 
   // Scale factor for the sides of the polygon, not the area
   private scaleFactor: number = 1;
@@ -41,16 +40,13 @@ export default class Area {
     });
   }
 
-  activate() {
+  enable() {
     this.map.on("pm:create", this.handleCreateShape, this);
-    this.map.on("pm:drawend", this.handleDisable, this);
+    this.map.on("pm:drawend", this.deactivate, this);
 
     this.map.pm.enableDraw(Area.SHAPE_NAME, {
       allowSelfIntersection: false,
     });
-
-    // Hide the button
-    this.map.pm.Toolbar.setButtonDisabled(Area.SHAPE_NAME, true);
   }
 
   updateScale(scaleFactor: number, unit: string) {
@@ -61,9 +57,9 @@ export default class Area {
     }
   }
 
-  private handleDisable() {
+  deactivate() {
     this.map.off("pm:create", this.handleCreateShape, this);
-    this.map.off("pm:drawend", this.handleDisable, this);
+    this.map.off("pm:drawend", this.deactivate, this);
   }
 
   protected handleCreateShape({
@@ -88,6 +84,10 @@ export default class Area {
   // Only supports simple polygons. No cuts and no overlapping.
   // https://en.wikipedia.org/wiki/Shoelace_formula
   private getArea(layer: L.Polygon): string {
+    if (!this.unit) {
+      return "Uncalibrated";
+    }
+
     const geo = layer.toGeoJSON();
     const coordinates = geo.geometry.coordinates as GeoJSON.Position[][];
 

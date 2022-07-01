@@ -32,8 +32,10 @@ import {
 
 import markerIcon from "./assets/marker-icon.png";
 import { generateCloudPathFromPoints } from "./plugins/CloudPolyline/cloud-points";
-import { CloudPolyline } from "./plugins/CloudPolyline";
+import { CloudPolylineRenderer } from "./plugins/CloudPolyline";
 import { toPDFCoords, toPDFRadius } from "./plugins/units";
+import { generateArrowPathFromPoints } from "./plugins/Measure/arrow-points";
+import { ArrowRenderer } from "./plugins/Measure/ArrowRenderer";
 
 type PDFExporterProps = {
   file: Uint8Array;
@@ -50,13 +52,17 @@ type FeatureProperties = {
     | "Polygon"
     | "Text"
     | "CloudPolygon"
-    | "Ruler";
+    | "Ruler"
+    | "Area";
 
   // Only used when shape is "Text"
   text?: string;
 
   // Only used when shape is "Circle"
   radius?: number;
+
+  // Only used when shape is "Area"
+  center?: GeoJSON.Position;
 };
 
 type FeatureCollection = GeoJSON.FeatureCollection<
@@ -64,7 +70,21 @@ type FeatureCollection = GeoJSON.FeatureCollection<
   FeatureProperties
 >;
 
-export type GeomanLayer = (L.Polyline | L.Marker | L.CircleMarker) & {
+type DrawTextOptions = {
+  coordinates: GeoJSON.Position;
+  text: string;
+  page: PDFPage;
+  centerOrigin?: boolean;
+  rotation?: number;
+  centerOffsetY?: number; // Only used if centerOrigin is true
+};
+
+export type GeomanLayer = (
+  | L.Polyline
+  | L.Marker
+  | L.CircleMarker
+  | L.Polygon
+) & {
   pm: L.PM.PMLayer;
 };
 
@@ -175,6 +195,17 @@ export default class PDFExporter {
           operators.push(...lineOperators);
           break;
         }
+
+        case "Area": {
+          const geometry = feature.geometry as GeoJSON.Polygon;
+          await this.drawArea(
+            geometry.coordinates,
+            feature.properties.text!,
+            feature.properties.center!,
+            page
+          );
+          break;
+        }
         default:
       }
     }
@@ -211,14 +242,7 @@ export default class PDFExporter {
     centerOrigin = false,
     rotation = 0,
     centerOffsetY = 0,
-  }: {
-    coordinates: GeoJSON.Position;
-    text: string;
-    page: PDFPage;
-    centerOrigin?: boolean;
-    rotation?: number;
-    centerOffsetY?: number; // Only used if centerOrigin is true
-  }): Promise<void> {
+  }: DrawTextOptions): Promise<void> {
     const font = await this.font;
     if (!font) {
       throw new Error("Font undefined");
@@ -308,7 +332,10 @@ export default class PDFExporter {
     return coordinates.flatMap((ring) => {
       // SVG origin is in top left, but PDF in bottom left, so invert y
       const points = ring.map(([x, y]) => ({ x, y: page.getHeight() - y }));
-      const path = generateCloudPathFromPoints(points, CloudPolyline.RADIUS);
+      const path = generateCloudPathFromPoints(
+        points,
+        CloudPolylineRenderer.RADIUS
+      );
 
       return drawSvgPath(path, {
         borderColor: this.COLOR,
@@ -406,7 +433,56 @@ export default class PDFExporter {
       centerOffsetY: font.heightAtSize(PDFExporter.FONT_SIZE),
     });
 
-    return PDFExporter.drawLine(coordinates);
+    // SVG origin is in top left, but PDF in bottom left, so invert y
+    const points = coordinates.map(([x, y]) => ({
+      x,
+      y: page.getHeight() - y,
+    }));
+    const path = generateArrowPathFromPoints(
+      points,
+      ArrowRenderer.ARROWHEAD_LENGTH,
+      true
+    );
+
+    return drawSvgPath(path, {
+      borderColor: PDFExporter.COLOR,
+      borderLineCap: LineCapStyle.Round,
+      borderWidth: PDFExporter.STROKE_WIDTH,
+      color: undefined,
+      graphicsState: PDFExporter.generateOpacityState(
+        PDFExporter.SHAPE_OPACITY,
+        page
+      ),
+      scale: 1,
+      x: 0,
+      y: page.getHeight(), // Same as above
+    });
+  }
+
+  private async drawArea(
+    coordinates: GeoJSON.Position[][],
+    text: string,
+    center: GeoJSON.Position,
+    page: PDFPage
+  ): Promise<void> {
+    const font = await this.font;
+    if (!font) {
+      throw new Error("Font not loaded");
+    }
+
+    // Need to draw polygon first
+    page.pushOperators(
+      pushGraphicsState(),
+      ...PDFExporter.drawPolygon(coordinates, page),
+      popGraphicsState()
+    );
+
+    await this.drawText({
+      coordinates: center,
+      text,
+      page,
+      centerOrigin: true,
+    });
   }
 
   // Returns a set of operators that together set the opacity of all
@@ -460,6 +536,15 @@ export default class PDFExporter {
         case "Ruler": {
           const ruler = layer as L.Polyline;
           geo.properties.text = ruler._text;
+          break;
+        }
+        case "Area": {
+          const polygon = layer as L.Polygon;
+          const { lng: x, lat: y } = polygon.getCenter();
+
+          // Should be a string
+          geo.properties.text = polygon.getTooltip()?.getContent();
+          geo.properties.center = toPDFCoords([x, y], page, this.canvasWidth);
           break;
         }
         default:
