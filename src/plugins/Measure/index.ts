@@ -55,6 +55,7 @@ export default class Measurements {
       name: "Measurements",
       block: "draw",
       title: "Perform Measurements",
+      className: "leaflet-ruler-icon",
       actions: [
         {
           text: "Calibrate",

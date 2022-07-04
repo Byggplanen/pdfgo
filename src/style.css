@@ -32,6 +32,10 @@
   background-image: url(assets/cloud.svg);
 }
 
+.leaflet-ruler-icon {
+  background-image: url(assets/ruler.svg);
+}
+
 .leaflet-ruler-text,
 .leaflet-area-text {
   font-size: 1.1em;
