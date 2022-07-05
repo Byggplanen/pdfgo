@@ -10,6 +10,7 @@ export class ArrowRenderer extends L.SVG {
   _addPath(layer: L.Layer): void {
     super._addPath(layer);
 
+    // eslint-disable-next-line no-param-reassign
     layer._arrowPath = layer._path.cloneNode() as HTMLElement;
     this._rootGroup.appendChild(layer._arrowPath);
     layer.addInteractiveTarget(layer._arrowPath);
@@ -30,6 +31,7 @@ export class ArrowRenderer extends L.SVG {
     this._setArrowPath(layer, path);
   }
 
+  // eslint-disable-next-line class-methods-use-this
   _setArrowPath(layer: L.Layer, path: string): void {
     const arrowPath = generateArrowPathFromPath(
       path,
