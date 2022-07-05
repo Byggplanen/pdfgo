@@ -1,11 +1,12 @@
 import L from "leaflet";
-import { PDFPage } from "pdf-lib";
 
 import Calibrate, { CalibrateCallback } from "./Calibrate";
 import Ruler from "./Ruler";
 import Area from "./Area";
 
 export default class Measurements {
+  static readonly CONTROL_NAME: string = "Measurements";
+
   static readonly LENGTH_REGEX: RegExp = /^(\d+)(ft|m)$/;
 
   private calibrate: Calibrate;
@@ -14,16 +15,18 @@ export default class Measurements {
 
   private area: Area;
 
-  constructor(
-    private map: L.Map,
-    page: PDFPage,
-    canvasWidth: number,
-    onCalibrate: CalibrateCallback
-  ) {
-    this.calibrate = new Calibrate(map, page, canvasWidth, onCalibrate);
-    this.ruler = new Ruler(map, page, canvasWidth);
-    this.area = new Area(map, page, canvasWidth);
+  constructor(private map: L.Map, onCalibrate?: CalibrateCallback) {
+    this.calibrate = new Calibrate(map, onCalibrate);
+    this.ruler = new Ruler(map);
+    this.area = new Area(map);
     this.init();
+  }
+
+  // Updates the values that are used to compute measurements
+  updateDimensions(pageWidth: number, pageHeight: number, canvasWidth: number) {
+    this.calibrate.updateDimensions(pageWidth, pageHeight, canvasWidth);
+    this.ruler.updateDimensions(pageWidth, pageHeight, canvasWidth);
+    this.area.updateDimensions(pageWidth, pageHeight, canvasWidth);
   }
 
   // `length` from Calibrate callback and `actualLength` from user input.
@@ -44,6 +47,12 @@ export default class Measurements {
   }
 
   private init() {
+    if (
+      this.map.pm.Toolbar.getControlOrder().includes(Measurements.CONTROL_NAME)
+    ) {
+      return;
+    }
+
     // Ruler, Calibrate and Area are all placed in the "custom" block
     // and hidden so we can trigger them from the Measurements actions
     // without showing another button in the toolbar

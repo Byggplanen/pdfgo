@@ -32,7 +32,6 @@ import {
 
 import markerIcon from "./assets/marker-icon.png";
 import { generateCloudPathFromPoints } from "./plugins/CloudPolyline/cloud-points";
-import { CloudPolylineRenderer } from "./plugins/CloudPolyline";
 import { toPDFCoords, toPDFRadius } from "./plugins/units";
 import { generateArrowPathFromPoints } from "./plugins/Measure/arrow-points";
 import { ArrowRenderer } from "./plugins/Measure/ArrowRenderer";
@@ -100,6 +99,9 @@ export default class PDFExporter {
 
   // Text font size
   static readonly FONT_SIZE = 16;
+
+  // Revision cloud arc radius
+  static readonly CLOUD_RADIUS = 10;
 
   // PDF document to save
   private pdf: Promise<PDFDocument>;
@@ -334,7 +336,7 @@ export default class PDFExporter {
       const points = ring.map(([x, y]) => ({ x, y: page.getHeight() - y }));
       const path = generateCloudPathFromPoints(
         points,
-        CloudPolylineRenderer.RADIUS
+        PDFExporter.CLOUD_RADIUS
       );
 
       return drawSvgPath(path, {
@@ -516,6 +518,7 @@ export default class PDFExporter {
 
   // Convert layers to GeoJSON with properties
   private toGeoJSON(layers: GeomanLayer[], page: PDFPage): FeatureCollection {
+    const { width: pageWidth, height: pageHeight } = page.getMediaBox();
     const features = layers.map((layer) => {
       const geo = layer.toGeoJSON();
       geo.properties.shape = layer.pm.getShape();
@@ -525,7 +528,7 @@ export default class PDFExporter {
           const circle = layer as L.Circle;
           geo.properties.radius = toPDFRadius(
             circle.getRadius(),
-            page,
+            pageWidth,
             this.canvasWidth
           );
           break;
@@ -544,7 +547,12 @@ export default class PDFExporter {
 
           // Should be a string
           geo.properties.text = polygon.getTooltip()?.getContent();
-          geo.properties.center = toPDFCoords([x, y], page, this.canvasWidth);
+          geo.properties.center = toPDFCoords(
+            [x, y],
+            pageWidth,
+            pageHeight,
+            this.canvasWidth
+          );
           break;
         }
         default:
@@ -566,6 +574,7 @@ export default class PDFExporter {
     geo: FeatureCollection,
     page: PDFPage
   ): FeatureCollection {
+    const { width: pageWidth, height: pageHeight } = page.getMediaBox();
     const features = geo.features.map((feature) => {
       switch (feature.geometry.type) {
         case "Polygon": {
@@ -575,7 +584,9 @@ export default class PDFExporter {
 
           newFeature.geometry.coordinates = newFeature.geometry.coordinates.map(
             (ring) =>
-              ring.map((coords) => toPDFCoords(coords, page, this.canvasWidth))
+              ring.map((coords) =>
+                toPDFCoords(coords, pageWidth, pageHeight, this.canvasWidth)
+              )
           );
 
           return newFeature;
@@ -586,7 +597,8 @@ export default class PDFExporter {
           } as GeoJSON.Feature<GeoJSON.LineString, FeatureProperties>;
 
           newFeature.geometry.coordinates = newFeature.geometry.coordinates.map(
-            (coords) => toPDFCoords(coords, page, this.canvasWidth)
+            (coords) =>
+              toPDFCoords(coords, pageWidth, pageHeight, this.canvasWidth)
           );
 
           return newFeature;
@@ -598,7 +610,8 @@ export default class PDFExporter {
 
           newFeature.geometry.coordinates = toPDFCoords(
             newFeature.geometry.coordinates,
-            page,
+            pageWidth,
+            pageHeight,
             this.canvasWidth
           );
 

@@ -29,9 +29,12 @@ export default class PDFRenderer {
     this.minZoom = minZoom;
   }
 
-  getRenderWidth(zoom: number) {
-    const normalizedZoom = zoom - this.minZoom + 1;
-    return window.screen.availWidth * normalizedZoom;
+  async getBoundaries(): Promise<{ width: number; height: number }> {
+    const pdf = await this.pdf;
+    const page = await pdf.getPage(this.pageNumber);
+    const { width, height } = page.getViewport({ scale: 1 });
+
+    return { width, height };
   }
 
   async renderPage(zoom: number): Promise<HTMLCanvasElement> {
@@ -67,5 +70,10 @@ export default class PDFRenderer {
     };
 
     return page.render(renderContext).promise;
+  }
+
+  private getRenderWidth(zoom: number) {
+    const normalizedZoom = zoom - this.minZoom + 1;
+    return window.screen.availWidth * normalizedZoom;
   }
 }

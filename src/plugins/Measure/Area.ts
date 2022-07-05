@@ -1,6 +1,5 @@
 import L from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
-import { PDFPage } from "pdf-lib";
 import throttle from "lodash/throttle";
 
 import { toPDFCoords } from "../units";
@@ -25,19 +24,31 @@ export default class Area {
   // Also contains layers that have been removed
   private layers: L.Polygon[] = [];
 
-  constructor(
-    private map: L.Map,
-    private page: PDFPage,
-    private canvasWidth: number
-  ) {
+  private pageWidth: number = 0;
+
+  private pageHeight: number = 0;
+
+  private canvasWidth: number = 0;
+
+  constructor(private map: L.Map) {
     this.init();
   }
 
   private init() {
+    if (this.map.pm.Toolbar.getControlOrder().includes(Area.SHAPE_NAME)) {
+      return;
+    }
+
     this.map.pm.Toolbar.copyDrawControl("Polygon", {
       name: Area.SHAPE_NAME,
       block: "custom",
     });
+  }
+
+  updateDimensions(pageWidth: number, pageHeight: number, canvasWidth: number) {
+    this.pageWidth = pageWidth;
+    this.pageHeight = pageHeight;
+    this.canvasWidth = canvasWidth;
   }
 
   enable() {
@@ -92,7 +103,9 @@ export default class Area {
     const coordinates = geo.geometry.coordinates as GeoJSON.Position[][];
 
     const pdfCoordinates = coordinates.flatMap((ring) =>
-      ring.map((coords) => toPDFCoords(coords, this.page, this.canvasWidth))
+      ring.map((coords) =>
+        toPDFCoords(coords, this.pageWidth, this.pageHeight, this.canvasWidth)
+      )
     );
 
     let total: number = 0;

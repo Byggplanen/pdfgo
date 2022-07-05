@@ -5,8 +5,9 @@ import { generateCloudPathFromPath } from "./cloud-points";
 // and modifies all L.Polyline layers (and subclasses of it)
 // to draw a cloud shape instead of straight lines.
 export class CloudPolylineRenderer extends L.SVG {
-  // Cloud arc radius
-  static readonly RADIUS = 10;
+  constructor(options?: L.RendererOptions, private radius: number = 10) {
+    super(options);
+  }
 
   _setPath(layer: L.Layer, path: string): void {
     let modifiedPath = path;
@@ -14,7 +15,7 @@ export class CloudPolylineRenderer extends L.SVG {
     if (layer instanceof L.Polyline) {
       modifiedPath = generateCloudPathFromPath(
         path,
-        CloudPolylineRenderer.RADIUS,
+        this.radius,
         // Invert arcs if rectangle (so they don't point inwards)
         layer instanceof L.Rectangle
       );

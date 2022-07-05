@@ -1,7 +1,6 @@
 import L from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 import "leaflet-textpath";
-import { PDFPage } from "pdf-lib";
 import throttle from "lodash/throttle";
 
 import { toPDFCoords } from "../units";
@@ -28,16 +27,28 @@ export default class Ruler {
   // Also contains layers that have been removed
   private layers: L.Polyline[] = [];
 
-  constructor(
-    private map: L.Map,
-    private page: PDFPage,
-    private canvasWidth: number
-  ) {
+  private pageWidth: number = 0;
+
+  private pageHeight: number = 0;
+
+  private canvasWidth: number = 0;
+
+  constructor(private map: L.Map) {
     this.arrowRenderer = arrowRenderer();
     this.init();
   }
 
+  updateDimensions(pageWidth: number, pageHeight: number, canvasWidth: number) {
+    this.pageWidth = pageWidth;
+    this.pageHeight = pageHeight;
+    this.canvasWidth = canvasWidth;
+  }
+
   protected init() {
+    if (this.map.pm.Toolbar.getControlOrder().includes(this.shape_name())) {
+      return;
+    }
+
     this.map.pm.Toolbar.copyDrawControl("Line", {
       name: this.shape_name(),
       block: "custom",
@@ -67,8 +78,10 @@ export default class Ruler {
     this.scaleFactor = scaleFactor;
     this.unit = unit;
     for (const layer of this.layers) {
-      layer.setText(null);
-      layer.setText(this.getFormattedDist(layer), Ruler.TEXT_OPTIONS);
+      if (this.map.hasLayer(layer)) {
+        layer.setText(null);
+        layer.setText(this.getFormattedDist(layer), Ruler.TEXT_OPTIONS);
+      }
     }
   }
 
@@ -130,7 +143,7 @@ export default class Ruler {
     }
 
     const pdfCoordinates = coordinates.map((coords) =>
-      toPDFCoords(coords, this.page, this.canvasWidth)
+      toPDFCoords(coords, this.pageWidth, this.pageHeight, this.canvasWidth)
     );
 
     const [x1, y1] = pdfCoordinates[0];
