@@ -1,11 +1,6 @@
 import "leaflet";
 
 declare module "leaflet" {
-  interface GridLayer {
-    _tileCoordsToBounds(tile: Coords): LatLngExpression;
-    _keyToTileCoords(key: string): Coords;
-  }
-
   interface Map {
     _latLngBoundsToNewLayerBounds(
       latLngBounds: LatLngBounds,
