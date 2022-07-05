@@ -1,10 +1,31 @@
 # pdf-draw
+A drop-in PDF annotator for the browser.
+
+## usage
+Import the CSS:
+```css
+@import "pdfgo/dist/style.css";
+```
+
+In JS/TS:
+```js
+import PDFGo from "pdfgo";
+
+const div = document.querySelector("#app");
+const pdfgo = new PDFGo(div);
+
+// Load a PDF
+const file = new Uint8Array(...);
+const name = "edited.pdf";
+await pdfgo.loadFile(file, name);
+
+// Download the PDF
+await pdfgo.downloadPdf();
+```
 
 ## todo
-- check licensing (mostly icons)
 - remove experimental/unused code
 - support for changing colors (not necessarily GUI)
-- refactor main.ts into class
 - improve enable/disable/toggle behavior of measurements toolbar button
 
 ## resources

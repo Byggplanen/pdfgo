@@ -1,4 +1,6 @@
-import PDFGo from "./PDFGo";
+import PDFGo from "../src";
+
+import "./style.css";
 
 /// CONSTANTS
 const ACTUAL_LENGTH = "20m";

@@ -9,7 +9,7 @@ import Measurements from "./plugins/Measure";
 import { CalibrateCallback } from "./plugins/Measure/Calibrate";
 import PixelCRS from "./plugins/PixelCRS";
 
-import "./pdfgo.css";
+import "./PDFGo.css";
 
 type PDFGoProps = {
   // Div element to render the viewer to
