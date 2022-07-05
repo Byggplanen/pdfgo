@@ -1,0 +1,1 @@
+{"version":3,"file":"arrow-points.d.ts","sourceRoot":"","sources":["../../../src/plugins/Measure/arrow-points.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,KAAK,EAAsC,MAAM,UAAU,CAAC;AAmBrE,wBAAgB,2BAA2B,CACzC,MAAM,EAAE,KAAK,EAAE,EACf,eAAe,EAAE,MAAM,EACvB,WAAW,UAAQ,GAClB,MAAM,CAwBR;AAED,wBAAgB,yBAAyB,CACvC,IAAI,EAAE,MAAM,EACZ,eAAe,EAAE,MAAM,EACvB,WAAW,UAAQ,GAClB,MAAM,CAoBR"}
