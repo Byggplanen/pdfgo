@@ -22,6 +22,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && tsc -P tsconfig.dts.json",
+    "build:example": "tsc && vite build --mode example",
     "preview": "vite preview",
     "format": "prettier . --write",
     "lint": "eslint --ext .ts,.js src"
