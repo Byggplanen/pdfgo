@@ -66,7 +66,7 @@ export default class Ruler {
     this.map.on("pm:drawend", this.deactivate, this);
 
     this.map.pm.enableDraw(this.shape_name(), {
-      pathOptions: { renderer: this.arrowRenderer },
+      pathOptions: { color: "red", renderer: this.arrowRenderer },
       hintlineStyle: { color: "#3388ff", renderer: this.arrowRenderer },
       templineStyle: { renderer: this.arrowRenderer },
       hideMiddleMarkers: true,

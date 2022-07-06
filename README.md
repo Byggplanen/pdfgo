@@ -21,6 +21,9 @@ await pdfgo.loadFile(file, name);
 
 // Download the PDF
 await pdfgo.downloadPdf();
+
+// ...or get the bytes
+const bytes = await pdfgo.savePdf();
 ```
 
 ## todo

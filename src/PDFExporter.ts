@@ -28,6 +28,7 @@ import {
   StandardFonts,
   drawSvgPath,
   concatTransformationMatrix,
+  RGB,
 } from "pdf-lib";
 
 import markerIcon from "./assets/marker-icon.png";
@@ -53,6 +54,9 @@ type FeatureProperties = {
     | "CloudPolygon"
     | "Ruler"
     | "Area";
+
+  // Color of the shape
+  color: RGB;
 
   // Only used when shape is "Text"
   text?: string;
@@ -94,14 +98,20 @@ export default class PDFExporter {
   // Opacity of shape fill
   static readonly SHAPE_OPACITY = 0.2;
 
-  // Fill and stroke color
-  static readonly COLOR = rgb(0.2, 0.53, 1);
-
   // Text font size
   static readonly FONT_SIZE = 16;
 
   // Revision cloud arc radius
   static readonly CLOUD_RADIUS = 10;
+
+  // Default fill and stroke color
+  static readonly DEFAULT_COLOR = rgb(0.2, 0.53, 1);
+
+  // Text color
+  static readonly TEXT_COLOR = rgb(0, 0, 0);
+
+  // Fill and stroke color for measurement layers (ruler, area)
+  static readonly MEASUREMENT_COLOR = rgb(1, 0, 0);
 
   // PDF document to save
   private pdf: Promise<PDFDocument>;
@@ -146,13 +156,22 @@ export default class PDFExporter {
         case "Polygon": {
           const geometry = feature.geometry as GeoJSON.Polygon;
           operators.push(
-            ...PDFExporter.drawPolygon(geometry.coordinates, page)
+            ...PDFExporter.drawPolygon(
+              geometry.coordinates,
+              feature.properties.color,
+              page
+            )
           );
           break;
         }
         case "Line": {
           const geometry = feature.geometry as GeoJSON.LineString;
-          operators.push(...PDFExporter.drawLine(geometry.coordinates));
+          operators.push(
+            ...PDFExporter.drawLine(
+              geometry.coordinates,
+              feature.properties.color
+            )
+          );
           break;
         }
         case "Circle": {
@@ -161,6 +180,7 @@ export default class PDFExporter {
             ...PDFExporter.drawCircle(
               geometry.coordinates,
               feature.properties.radius!,
+              feature.properties.color,
               page
             )
           );
@@ -183,7 +203,11 @@ export default class PDFExporter {
         case "CloudPolygon": {
           const geometry = feature.geometry as GeoJSON.Polygon;
           operators.push(
-            ...PDFExporter.drawCloudPolygon(geometry.coordinates, page)
+            ...PDFExporter.drawCloudPolygon(
+              geometry.coordinates,
+              feature.properties.color,
+              page
+            )
           );
           break;
         }
@@ -192,6 +216,7 @@ export default class PDFExporter {
           const lineOperators = await this.drawRuler(
             geometry.coordinates,
             feature.properties.text!,
+            feature.properties.color,
             page
           );
           operators.push(...lineOperators);
@@ -203,6 +228,7 @@ export default class PDFExporter {
           await this.drawArea(
             geometry.coordinates,
             feature.properties.text!,
+            feature.properties.color,
             feature.properties.center!,
             page
           );
@@ -215,9 +241,13 @@ export default class PDFExporter {
     page.pushOperators(pushGraphicsState(), ...operators, popGraphicsState());
   }
 
-  async downloadPdf() {
+  async savePdf(): Promise<Uint8Array> {
     const pdf = await this.pdf;
-    const bytes = await pdf.save();
+    return pdf.save();
+  }
+
+  async downloadPdf() {
+    const bytes = await this.savePdf();
     const blob = new Blob([bytes.buffer]);
 
     const link = document.createElement("a");
@@ -295,7 +325,7 @@ export default class PDFExporter {
       y,
       font,
       size: PDFExporter.FONT_SIZE,
-      color: PDFExporter.COLOR,
+      color: PDFExporter.TEXT_COLOR,
       lineHeight: PDFExporter.FONT_SIZE,
     });
 
@@ -306,6 +336,7 @@ export default class PDFExporter {
 
   private static drawPolygon(
     coordinates: GeoJSON.Position[][],
+    color: RGB,
     page: PDFPage
   ): PDFOperator[] {
     return coordinates.flatMap((ring) => {
@@ -316,8 +347,8 @@ export default class PDFExporter {
           const [x, y] = coords;
           return lineTo(x, y);
         }),
-        setFillingColor(this.COLOR),
-        setStrokingColor(this.COLOR),
+        setFillingColor(color),
+        setStrokingColor(color),
         setLineWidth(this.STROKE_WIDTH),
         closePath(),
         fillAndStroke(),
@@ -329,6 +360,7 @@ export default class PDFExporter {
 
   private static drawCloudPolygon(
     coordinates: GeoJSON.Position[][],
+    color: RGB,
     page: PDFPage
   ): PDFOperator[] {
     return coordinates.flatMap((ring) => {
@@ -340,10 +372,10 @@ export default class PDFExporter {
       );
 
       return drawSvgPath(path, {
-        borderColor: this.COLOR,
+        borderColor: color,
         borderLineCap: LineCapStyle.Round,
         borderWidth: this.STROKE_WIDTH,
-        color: this.COLOR,
+        color,
         graphicsState: this.generateOpacityState(this.SHAPE_OPACITY, page),
         scale: 1,
         x: 0,
@@ -355,13 +387,14 @@ export default class PDFExporter {
   private static drawCircle(
     coordinates: GeoJSON.Position,
     radius: number,
+    color: RGB,
     page: PDFPage
   ): PDFOperator[] {
     const [x, y] = coordinates;
     return drawEllipse({
-      borderColor: this.COLOR,
+      borderColor: color,
       borderWidth: this.STROKE_WIDTH,
-      color: this.COLOR,
+      color,
       graphicsState: this.generateOpacityState(this.SHAPE_OPACITY, page),
       x,
       y,
@@ -370,7 +403,10 @@ export default class PDFExporter {
     });
   }
 
-  private static drawLine(coordinates: GeoJSON.Position[]): PDFOperator[] {
+  private static drawLine(
+    coordinates: GeoJSON.Position[],
+    color: RGB
+  ): PDFOperator[] {
     const [startX, startY] = coordinates[0];
     return [
       moveTo(startX, startY),
@@ -378,7 +414,7 @@ export default class PDFExporter {
         const [x, y] = coords;
         return lineTo(x, y);
       }),
-      setStrokingColor(this.COLOR),
+      setStrokingColor(color),
       setLineCap(LineCapStyle.Round),
       setLineWidth(this.STROKE_WIDTH),
       stroke(),
@@ -412,6 +448,7 @@ export default class PDFExporter {
   private async drawRuler(
     coordinates: GeoJSON.Position[],
     text: string,
+    color: RGB,
     page: PDFPage
   ): Promise<PDFOperator[]> {
     const font = await this.font;
@@ -447,7 +484,7 @@ export default class PDFExporter {
     );
 
     return drawSvgPath(path, {
-      borderColor: PDFExporter.COLOR,
+      borderColor: color,
       borderLineCap: LineCapStyle.Round,
       borderWidth: PDFExporter.STROKE_WIDTH,
       color: undefined,
@@ -464,6 +501,7 @@ export default class PDFExporter {
   private async drawArea(
     coordinates: GeoJSON.Position[][],
     text: string,
+    color: RGB,
     center: GeoJSON.Position,
     page: PDFPage
   ): Promise<void> {
@@ -475,7 +513,7 @@ export default class PDFExporter {
     // Need to draw polygon first
     page.pushOperators(
       pushGraphicsState(),
-      ...PDFExporter.drawPolygon(coordinates, page),
+      ...PDFExporter.drawPolygon(coordinates, color, page),
       popGraphicsState()
     );
 
@@ -522,6 +560,11 @@ export default class PDFExporter {
     const features = layers.map((layer) => {
       const geo = layer.toGeoJSON();
       geo.properties.shape = layer.pm.getShape();
+      geo.properties.color = PDFExporter.DEFAULT_COLOR;
+
+      const options = layer.options as L.PathOptions;
+      geo.properties.color =
+        PDFExporter.hexToRgb(options.color) ?? PDFExporter.DEFAULT_COLOR;
 
       switch (geo.properties.shape) {
         case "Circle": {
@@ -534,11 +577,12 @@ export default class PDFExporter {
           break;
         }
         case "Text":
-          geo.properties.text = layer.pm.getText();
+          geo.properties.text = layer.pm.getText().trim();
           break;
         case "Ruler": {
           const ruler = layer as L.Polyline;
           geo.properties.text = ruler._text;
+          geo.properties.color = PDFExporter.MEASUREMENT_COLOR;
           break;
         }
         case "Area": {
@@ -547,6 +591,7 @@ export default class PDFExporter {
 
           // Should be a string
           geo.properties.text = polygon.getTooltip()?.getContent();
+          geo.properties.color = PDFExporter.MEASUREMENT_COLOR;
           geo.properties.center = toPDFCoords(
             [x, y],
             pageWidth,
@@ -623,5 +668,22 @@ export default class PDFExporter {
     });
 
     return { ...geo, features };
+  }
+
+  // #abcdef to RGB
+  private static hexToRgb(hex?: string): RGB | undefined {
+    if (!hex) {
+      return undefined;
+    }
+
+    const bigint = parseInt(hex.slice(1), 16);
+
+    /* eslint-disable no-bitwise */
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    /* eslint-enable no-bitwise */
+
+    return rgb(r / 255, g / 255, b / 255);
   }
 }

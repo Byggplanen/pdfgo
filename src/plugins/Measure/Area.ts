@@ -56,6 +56,7 @@ export default class Area {
     this.map.on("pm:drawend", this.deactivate, this);
 
     this.map.pm.enableDraw(Area.SHAPE_NAME, {
+      pathOptions: { color: "red" },
       allowSelfIntersection: false,
     });
   }

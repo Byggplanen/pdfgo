@@ -8,6 +8,7 @@ import { cloudPolygon } from "./plugins/CloudPolyline";
 import Measurements from "./plugins/Measure";
 import { CalibrateCallback } from "./plugins/Measure/Calibrate";
 import PixelCRS from "./plugins/PixelCRS";
+import { ColorClickCallback, colorPicker } from "./plugins/ColorPicker";
 
 import "./PDFGo.css";
 
@@ -33,6 +34,12 @@ type PDFGoProps = {
 
   // The function that is called when the user performs a calibration
   onCalibrate?: CalibrateCallback;
+
+  // Called when clicking the color picker button.
+  //
+  // The element passed is the color button itself, which can be used to
+  // attach any color picker near the color button
+  onColorClick?: ColorClickCallback;
 };
 
 export default class PDFGo {
@@ -47,6 +54,8 @@ export default class PDFGo {
   private measurements?: Measurements;
 
   private onCalibrate?: CalibrateCallback;
+
+  private onColorClick?: ColorClickCallback;
 
   // Width of canvas in map
   private canvasWidth: number = 0;
@@ -64,6 +73,7 @@ export default class PDFGo {
     maxZoom = 2,
     zoom = -2,
     onCalibrate,
+    onColorClick,
   }: PDFGoProps) {
     this.map = L.map(element, {
       zoom,
@@ -74,8 +84,18 @@ export default class PDFGo {
     });
     this.pageNumber = pageNumber;
     this.onCalibrate = onCalibrate;
+    this.measurements = new Measurements(this.map, this.onCalibrate);
+    this.onColorClick = onColorClick;
     this.initializeHandlers();
     this.initializeToolbar();
+  }
+
+  // Set rgb color (hex format)
+  setColor(color: string) {
+    this.map.pm.setPathOptions(
+      { color },
+      { merge: true, ignoreShapes: ["Ruler", "Calibrate", "Area"] }
+    );
   }
 
   // Load the file in the typed array. `name` is the name that
@@ -126,6 +146,23 @@ export default class PDFGo {
     await exporter.downloadPdf();
   }
 
+  // Return the new PDF with all annotations as a typed array.
+  async savePdf(): Promise<Uint8Array> {
+    if (!this.file || !this.fileName) {
+      throw new Error("Cannot download PDF before PDF has been loaded");
+    }
+
+    const exporter = new PDFExporter({
+      file: this.file,
+      name: this.fileName,
+      canvasWidth: this.canvasWidth,
+    });
+
+    const layers = this.map.pm.getGeomanLayers() as GeomanLayer[];
+    await exporter.drawLayers(layers, this.pageNumber - 1);
+    return exporter.savePdf();
+  }
+
   // Adjust the scale of the loaded PDF.
   //
   // `length` is the value passed to `onCalibrate` (a length in points)
@@ -148,23 +185,27 @@ export default class PDFGo {
       position: "topleft",
       drawCircleMarker: false,
       cutPolygon: false,
+
+      // Ruler, Calibrate and Area are all placed in the "custom" block
+      // and hidden so we can trigger them from the Measurements actions
+      // without showing another button in the toolbar
+      customControls: false,
     });
 
     this.map.pm.setGlobalOptions({
       allowSelfIntersection: false,
+      continueDrawing: false,
     });
 
     // Cloud polyline button
     cloudPolygon(this.map);
 
-    // Ruler, Calibrate and Area are all placed in the "custom" block
-    // and hidden so we can trigger them from the Measurements actions
-    // without showing another button in the toolbar
-    this.map.pm.addControls({
-      customControls: false,
+    // Color picker
+    colorPicker({
+      map: this.map,
+      onClick: this.onColorClick,
+      onColorSelect: this.setColor,
     });
-
-    this.measurements = new Measurements(this.map, this.onCalibrate);
   }
 
   private async onZoom() {

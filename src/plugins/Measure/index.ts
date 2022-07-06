@@ -61,7 +61,7 @@ export default class Measurements {
     });
 
     this.map.pm.Toolbar.createCustomControl({
-      name: "Measurements",
+      name: Measurements.CONTROL_NAME,
       block: "draw",
       title: "Perform Measurements",
       className: "leaflet-ruler-icon",
