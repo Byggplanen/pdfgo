@@ -53,13 +53,6 @@ export default class Measurements {
       return;
     }
 
-    // Ruler, Calibrate and Area are all placed in the "custom" block
-    // and hidden so we can trigger them from the Measurements actions
-    // without showing another button in the toolbar
-    this.map.pm.addControls({
-      customControls: false,
-    });
-
     this.map.pm.Toolbar.createCustomControl({
       name: Measurements.CONTROL_NAME,
       block: "draw",

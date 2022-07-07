@@ -13,10 +13,7 @@
       "import": "./dist/pdfgo.es.js",
       "require": "./dist/pdfgo.umd.js"
     },
-    "./dist/style.css": {
-      "import": "./dist/style.css",
-      "require": "./dist/style.css"
-    }
+    "./dist/style.css": "./dist/style.css"
   },
   "typings": "dist/index.d.ts",
   "scripts": {

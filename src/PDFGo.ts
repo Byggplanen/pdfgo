@@ -11,6 +11,19 @@ import PixelCRS from "./plugins/PixelCRS";
 import { ColorClickCallback, colorPicker } from "./plugins/ColorPicker";
 
 import "./PDFGo.css";
+import { save } from "./plugins/Save";
+
+type SaveClickCallback = (bytes?: Uint8Array) => Promise<void>;
+
+type SaveSettings = {
+  // Callback for when the button is clicked.
+  // If download is false, the PDF bytes are passed.
+  onClick?: SaveClickCallback;
+
+  // Whether the button should trigger a download
+  // Default: false
+  download?: boolean;
+};
 
 type PDFGoProps = {
   // Div element to render the viewer to
@@ -40,6 +53,10 @@ type PDFGoProps = {
   // The element passed is the color button itself, which can be used to
   // attach any color picker near the color button
   onColorClick?: ColorClickCallback;
+
+  // If supplied, a save button will be added to the toolbar
+  // with the given settings.
+  saveSettings?: SaveSettings;
 };
 
 export default class PDFGo {
@@ -56,6 +73,8 @@ export default class PDFGo {
   private onCalibrate?: CalibrateCallback;
 
   private onColorClick?: ColorClickCallback;
+
+  private saveSettings?: SaveSettings;
 
   // Width of canvas in map
   private canvasWidth: number = 0;
@@ -74,6 +93,7 @@ export default class PDFGo {
     zoom = -2,
     onCalibrate,
     onColorClick,
+    saveSettings,
   }: PDFGoProps) {
     this.map = L.map(element, {
       zoom,
@@ -81,11 +101,13 @@ export default class PDFGo {
       maxZoom,
       center: [0, 0],
       crs: PixelCRS,
+      attributionControl: false,
     });
     this.pageNumber = pageNumber;
     this.onCalibrate = onCalibrate;
     this.measurements = new Measurements(this.map, this.onCalibrate);
     this.onColorClick = onColorClick;
+    this.saveSettings = saveSettings;
     this.initializeHandlers();
     this.initializeToolbar();
   }
@@ -127,6 +149,23 @@ export default class PDFGo {
     // Initialize the measurement tools
     const { width, height } = await this.pdfRenderer.getBoundaries();
     this.measurements?.updateDimensions(width, height, canvas.width);
+
+    // Create save button
+    if (this.saveSettings) {
+      const shouldDownload = this.saveSettings.download ?? false;
+      const saveCb = async () => {
+        let bytes;
+        if (shouldDownload) {
+          await this.downloadPdf();
+        } else {
+          bytes = await this.savePdf();
+        }
+
+        this.saveSettings?.onClick?.(bytes);
+      };
+
+      save(this.map, saveCb);
+    }
   }
 
   // Download the pdf with all annotations.
@@ -170,6 +209,11 @@ export default class PDFGo {
   // any spaces. E:g., 23ft or 8m.
   adjustScale(length: number, actualLength: string) {
     this.measurements?.adjustScale(length, actualLength);
+  }
+
+  // Destroy the PDF viewer
+  destroy() {
+    this.map.remove();
   }
 
   private clearMap() {

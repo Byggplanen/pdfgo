@@ -24,6 +24,9 @@ await pdfgo.downloadPdf();
 
 // ...or get the bytes
 const bytes = await pdfgo.savePdf();
+
+// Destroy the annotator when done
+pdfgo.destroy();
 ```
 
 ## todo

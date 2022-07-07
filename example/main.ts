@@ -8,13 +8,15 @@ const ACTUAL_LENGTH = "20m";
 /// ELEMENTS
 const map = document.querySelector<HTMLDivElement>("#map")!;
 const inputEl = document.querySelector<HTMLInputElement>("#pdf-input")!;
-const downloadBtn = document.querySelector<HTMLButtonElement>("#download-btn")!;
 
 // GLOBALS
 const pdfGo = new PDFGo({
   element: map,
   onCalibrate: (length: number) => {
     pdfGo.adjustScale(length, ACTUAL_LENGTH);
+  },
+  saveSettings: {
+    download: true,
   },
 });
 
@@ -34,6 +36,3 @@ function onFileChange() {
 
 /// EVENT LISTENERS
 inputEl.addEventListener("change", onFileChange);
-downloadBtn.addEventListener("click", () => {
-  pdfGo.downloadPdf();
-});
