@@ -22,7 +22,8 @@
     "build:example": "tsc && vite build --mode example",
     "preview": "vite preview",
     "format": "prettier . --write",
-    "lint": "eslint --ext .ts,.js src"
+    "lint": "eslint --ext .ts,.js src",
+    "prepare": "yarn build"
   },
   "devDependencies": {
     "@types/leaflet": "^1.7.11",
