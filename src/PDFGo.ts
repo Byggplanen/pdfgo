@@ -1,6 +1,8 @@
 import L from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 
+import "./patches/fix-leaflet-marker";
+
 import PDFExporter, { GeomanLayer } from "./PDFExporter";
 import PDFRenderer from "./PDFRenderer";
 import { canvasOverlay, CanvasOverlay } from "./plugins/CanvasOverlay";
@@ -45,13 +47,16 @@ type PDFGoProps = {
   // Default: -2
   zoom?: number;
 
-  // The function that is called when the user performs a calibration
+  // The function that is called when the user performs a calibration.
+  //
+  // Will be called with the length in the PDF and a reference to the
+  // calibration button to which a popup can be attached.
   onCalibrate?: CalibrateCallback;
 
   // Called when clicking the color picker button.
   //
   // The element passed is the color button itself, which can be used to
-  // attach any color picker near the color button
+  // attach any color picker near the color button.
   onColorClick?: ColorClickCallback;
 
   // If supplied, a save button will be added to the toolbar

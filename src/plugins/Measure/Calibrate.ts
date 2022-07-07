@@ -2,7 +2,7 @@ import L from "leaflet";
 
 import Ruler from "./Ruler";
 
-export type CalibrateCallback = (length: number) => void;
+export type CalibrateCallback = (length: number, element: Element) => void;
 
 export default class Calibrate extends Ruler {
   constructor(map: L.Map, private onCalibrate?: CalibrateCallback) {
@@ -18,16 +18,17 @@ export default class Calibrate extends Ruler {
   }
 
   protected handleCreateShape({
-    shape,
     layer,
   }: {
     shape: string;
     layer: L.Layer;
   }): void {
-    super.handleCreateShape({ shape, layer });
     const polyline = layer as L.Polyline;
     polyline.setText(null);
-    this.onCalibrate?.(+this.getPointDist(polyline));
+    this.onCalibrate?.(
+      +this.getPointDist(polyline),
+      document.querySelector(".leaflet-ruler-icon")!
+    );
     polyline.remove();
   }
 }
