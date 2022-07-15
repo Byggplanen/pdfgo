@@ -119,6 +119,13 @@ export default class PDFGo {
 
   // Set rgb color (hex format)
   setColor(color: string) {
+    document
+      .querySelectorAll(".leaflet-color-picker-button")
+      .forEach((element) => {
+        const button = element as HTMLDivElement;
+        button.style.backgroundColor = color;
+      });
+
     this.map.pm.setPathOptions(
       { color },
       { merge: true, ignoreShapes: ["Ruler", "Calibrate", "Area"] }

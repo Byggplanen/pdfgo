@@ -49,12 +49,6 @@ export class ColorPicker {
     picker.addEventListener("change", () => {
       this.onColorSelect?.(picker.value);
       this.color = picker.value;
-      document
-        .querySelectorAll(".leaflet-color-picker-button")
-        .forEach((element) => {
-          const button = element as HTMLDivElement;
-          button.style.backgroundColor = picker.value;
-        });
     });
 
     picker.addEventListener("blur", () => {
