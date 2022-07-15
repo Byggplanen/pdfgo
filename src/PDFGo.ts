@@ -186,6 +186,9 @@ export default class PDFGo {
 
       save(this.map, saveCb);
     }
+
+    // Re-set color (the button is redrawn so we need to re-set the style)
+    this.setColor(this.color);
   }
 
   // Download the pdf with all annotations.
