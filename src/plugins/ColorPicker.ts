@@ -7,6 +7,9 @@ export type ColorSelectCallback = (color: string) => void;
 type ColorPickerProps = {
   map: L.Map;
 
+  // Default color
+  color: string;
+
   // Called when clicking the color picker button
   onClick?: ColorClickCallback;
 
@@ -24,19 +27,17 @@ export class ColorPicker {
 
   private onColorSelect?: ColorSelectCallback;
 
-  private color: string = "#3388ff";
-
-  constructor({ map, onClick, onColorSelect }: ColorPickerProps) {
+  constructor({ map, color, onClick, onColorSelect }: ColorPickerProps) {
     this.map = map;
     this.onClick = onClick;
     this.onColorSelect = onColorSelect;
-    this.init();
+    this.init(color);
   }
 
-  private showDefaultColorPicker(target: HTMLElement) {
+  private showDefaultColorPicker(target: HTMLElement, color: string) {
     const picker = document.createElement("input");
     picker.setAttribute("type", "color");
-    picker.setAttribute("value", this.color);
+    picker.setAttribute("value", color);
     picker.classList.add("leaflet-color-picker");
     target.appendChild(picker);
 
@@ -48,7 +49,6 @@ export class ColorPicker {
 
     picker.addEventListener("change", () => {
       this.onColorSelect?.(picker.value);
-      this.color = picker.value;
     });
 
     picker.addEventListener("blur", () => {
@@ -59,7 +59,7 @@ export class ColorPicker {
     picker.click();
   }
 
-  private init() {
+  private init(color: string) {
     if (
       this.map.pm.Toolbar.getControlOrder().includes(ColorPicker.CONTROL_NAME)
     ) {
@@ -81,7 +81,7 @@ export class ColorPicker {
           return;
         }
 
-        this.showDefaultColorPicker(target);
+        this.showDefaultColorPicker(target, color);
       },
     });
   }

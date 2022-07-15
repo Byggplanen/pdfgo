@@ -90,6 +90,9 @@ export default class PDFGo {
   // File name to save the PDF with
   private fileName?: string;
 
+  // Color picker color
+  private color: string = "#3388ff";
+
   constructor({
     element,
     pageNumber = 1,
@@ -117,8 +120,13 @@ export default class PDFGo {
     this.initializeToolbar();
   }
 
+  getColor(): string {
+    return this.color;
+  }
+
   // Set rgb color (hex format)
   setColor(color: string) {
+    this.color = color;
     document
       .querySelectorAll(".leaflet-color-picker-button")
       .forEach((element) => {
@@ -259,6 +267,7 @@ export default class PDFGo {
     // Color picker
     colorPicker({
       map: this.map,
+      color: this.color,
       onClick: this.onColorClick,
       onColorSelect: this.setColor,
     });
