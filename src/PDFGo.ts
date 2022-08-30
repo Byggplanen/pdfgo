@@ -197,7 +197,7 @@ export default class PDFGo {
       throw new Error("Cannot download PDF before PDF has been loaded");
     }
 
-    const exporter = new PDFExporter({
+    const exporter = await PDFExporter.init({
       file: this.file,
       name: this.fileName,
       canvasWidth: this.canvasWidth,
@@ -214,7 +214,7 @@ export default class PDFGo {
       throw new Error("Cannot download PDF before PDF has been loaded");
     }
 
-    const exporter = new PDFExporter({
+    const exporter = await PDFExporter.init({
       file: this.file,
       name: this.fileName,
       canvasWidth: this.canvasWidth,

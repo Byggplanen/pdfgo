@@ -129,11 +129,19 @@ export default class PDFExporter {
   // Font used to render text. Loaded in `loadAssets()`.
   private font?: Promise<PDFFont>;
 
-  constructor({ file, name, canvasWidth }: PDFExporterProps) {
+  /**
+   * Should not be called directly, see {@link PDFExporter.init} instead.
+   */
+  private constructor({ file, name, canvasWidth }: PDFExporterProps) {
     this.pdf = PDFDocument.load(file);
     this.name = name;
     this.canvasWidth = canvasWidth;
-    this.loadAssets();
+  }
+
+  static async init(props: PDFExporterProps) {
+    const pdfExporter = new PDFExporter(props);
+    await pdfExporter.loadAssets();
+    return pdfExporter;
   }
 
   async getPage(pageNumber: number): Promise<PDFPage> {
