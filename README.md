@@ -1,5 +1,5 @@
-# pdf-draw
-A drop-in PDF annotator for the browser.
+# pdfgo.js
+A drop-in PDF annotator and markups for the browser.
 
 ## usage
 Import the CSS:
