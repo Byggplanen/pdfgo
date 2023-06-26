@@ -1,6 +1,8 @@
 # pdfgo.js
 A drop-in PDF annotator and markups for the browser.
 
+![image](https://github.com/Byggplanen/pdf-draw/assets/47240703/4780c156-b052-4588-be30-aec694a3d966)
+
 ## usage
 Import the CSS:
 ```css
