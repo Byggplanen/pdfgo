@@ -1,4 +1,4 @@
-import L from "leaflet";
+import L, {PathOptions} from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 
 import "./patches/fix-leaflet-marker";
@@ -14,6 +14,7 @@ import { ColorClickCallback, colorPicker } from "./plugins/ColorPicker";
 
 import "./PDFGo.css";
 import { save } from "./plugins/Save";
+import {cloudPolylineRenderer} from "./plugins/CloudPolyline/CloudPolylineRenderer";
 
 type SaveClickCallback = (bytes?: Uint8Array) => Promise<void>;
 
@@ -63,6 +64,12 @@ type PDFGoProps = {
   // with the given settings.
   saveSettings?: SaveSettings;
 };
+
+interface JSONLayer {
+  type?: string,
+  latLngs: any,
+  options: PathOptions | any
+}
 
 export default class PDFGo {
   private map: L.Map;
@@ -138,6 +145,95 @@ export default class PDFGo {
       { color },
       { merge: true, ignoreShapes: ["Ruler", "Calibrate", "Area"] }
     );
+  }
+
+  importFromJSON(json: string): void {
+    JSON.parse(json).forEach((feature: JSONLayer) => {
+      switch (feature.options.renderer) {
+        case 'CloudPolylineRenderer':
+          feature.options.renderer = cloudPolylineRenderer(feature.options)
+      }
+
+        switch (feature.type) {
+          case "Circle":
+            new L.Circle(feature.latLngs, feature.options).addTo(this.map);
+            break;
+          case "Polyline":
+            new L.Polyline(feature.latLngs, feature.options).addTo(this.map);
+            break;
+          case "Marker":
+            new L.Marker(feature.latLngs, feature.options).addTo(this.map);
+            break;
+          case "Polygon":
+            new L.Polygon(feature.latLngs, feature.options).addTo(this.map);
+            break;
+          // case "Circlemarker":
+          //   new L.CircleMarker(feature.latLngs, feature.options).addTo(this.map);
+          //   break;
+        }
+      })
+  }
+
+  getGeoJSON(): string {
+
+    const json: any = []
+
+    this.map.eachLayer(layer => {
+      if (layer instanceof L.Circle) {
+        const jsonLayer: JSONLayer = {
+          type: "Circle",
+          options: layer.options,
+          latLngs: layer.getBounds().getCenter()
+        }
+        json.push(jsonLayer);
+      }
+
+      if (layer instanceof L.Polyline) {
+        const options: any = layer.options;
+        if (layer.options.renderer !== undefined) {
+          options.renderer = 'CloudPolylineRenderer'
+        }
+        const jsonLayer: JSONLayer = {
+          type: "Polyline",
+          options: options,
+          latLngs: layer.getLatLngs()
+        }
+        json.push(jsonLayer);
+      }
+
+      if (layer instanceof L.Marker) {
+        const jsonLayer: JSONLayer = {
+          type: "Marker",
+          options: layer.options,
+          latLngs: layer.getLatLng()
+        }
+        json.push(jsonLayer);
+      }
+
+      if (layer instanceof L.CircleMarker) {
+        const jsonLayer: JSONLayer = {
+          type: "Circlemarker",
+          options: layer.options,
+          latLngs: layer.getLatLng()
+        }
+        json.push(jsonLayer);
+      }
+
+      if (layer instanceof L.Polygon) {
+        const options: any = layer.options;
+        if (layer.options.renderer !== undefined) {
+          options.renderer = 'CloudPolylineRenderer'
+        }
+        const jsonLayer: JSONLayer = {
+          type: "Polygon",
+          options: options,
+          latLngs: layer.getLatLngs()
+        }
+        json.push(jsonLayer);
+      }
+    })
+
+    return JSON.stringify(json)
   }
 
   // Load the file in the typed array. `name` is the name that
