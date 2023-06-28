@@ -97,6 +97,8 @@ export default class PDFGo {
   // Width of canvas in map
   private canvasWidth: number = 0;
 
+  private changed: boolean = false;
+
   // File (PDF) to render
   private file?: Uint8Array;
 
@@ -302,12 +304,16 @@ export default class PDFGo {
     this.setColor(this.color);
   }
 
+  isChanged(): boolean {
+    return this.changed
+  }
   onChange() {
     const callback = this.onChangeCallback
     if (callback !== undefined) {
       if(this.file !== undefined){
         this.savePdf().then((r) => {
           if (this.fileWithLayers !== undefined && r !== this.fileWithLayers) {
+            this.changed = true
             callback(r)
           }
           this.fileWithLayers = r;
