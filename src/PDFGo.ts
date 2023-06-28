@@ -69,6 +69,7 @@ interface JSONLayer {
   type?: string,
   latLngs: any,
   options: PathOptions | any
+  element?: any
 }
 
 export default class PDFGo {
@@ -174,11 +175,13 @@ export default class PDFGo {
       })
   }
 
-  getGeoJSON(): string {
+  getJSON(): string {
 
     const json: any = []
 
+    //@TODO add text layer
     this.map.eachLayer(layer => {
+      console.log(layer)
       if (layer instanceof L.Circle) {
         const jsonLayer: JSONLayer = {
           type: "Circle",
@@ -202,10 +205,12 @@ export default class PDFGo {
       }
 
       if (layer instanceof L.Marker) {
+        console.log(layer.options.icon);
         const jsonLayer: JSONLayer = {
           type: "Marker",
           options: layer.options,
-          latLngs: layer.getLatLng()
+          latLngs: layer.getLatLng(),
+          element: layer.options.icon instanceof L.DivIcon ? (layer.options.icon.options.html as HTMLTextAreaElement).value : undefined
         }
         json.push(jsonLayer);
       }
