@@ -15,6 +15,9 @@ const pdfGo = new PDFGo({
   onCalibrate: (length: number) => {
     pdfGo.adjustScale(length, ACTUAL_LENGTH);
   },
+  onChange: function (bytes) {
+    console.log(bytes)
+  },
   saveSettings: {
     download: true,
   },

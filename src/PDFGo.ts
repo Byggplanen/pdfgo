@@ -17,6 +17,7 @@ import { save } from "./plugins/Save";
 import {cloudPolylineRenderer} from "./plugins/CloudPolyline/CloudPolylineRenderer";
 
 type SaveClickCallback = (bytes?: Uint8Array) => Promise<void>;
+type ChangeCallback = (bytes?: Uint8Array) => void
 
 type SaveSettings = {
   // Callback for when the button is clicked.
@@ -47,6 +48,8 @@ type PDFGoProps = {
   // Initial zoom level
   // Default: -2
   zoom?: number;
+
+  onChange?: ChangeCallback;
 
   // The function that is called when the user performs a calibration.
   //
@@ -87,6 +90,8 @@ export default class PDFGo {
 
   private onColorClick?: ColorClickCallback;
 
+  private onChangeCallback?: ChangeCallback
+
   private saveSettings?: SaveSettings;
 
   // Width of canvas in map
@@ -94,6 +99,8 @@ export default class PDFGo {
 
   // File (PDF) to render
   private file?: Uint8Array;
+
+  private fileWithLayers?: Uint8Array;
 
   // File name to save the PDF with
   private fileName?: string;
@@ -110,6 +117,7 @@ export default class PDFGo {
     onCalibrate,
     onColorClick,
     saveSettings,
+    onChange
   }: PDFGoProps) {
     this.map = L.map(element, {
       zoom,
@@ -121,11 +129,13 @@ export default class PDFGo {
     });
     this.pageNumber = pageNumber;
     this.onCalibrate = onCalibrate;
+    this.onChangeCallback = onChange;
     this.measurements = new Measurements(this.map, this.onCalibrate);
     this.onColorClick = onColorClick;
     this.saveSettings = saveSettings;
     this.initializeHandlers();
     this.initializeToolbar();
+    this.onChange();
   }
 
   getColor(): string {
@@ -292,6 +302,20 @@ export default class PDFGo {
     this.setColor(this.color);
   }
 
+  onChange() {
+    const callback = this.onChangeCallback
+    if (callback !== undefined) {
+      if(this.file !== undefined){
+        this.savePdf().then((r) => {
+          if (this.fileWithLayers !== undefined && r !== this.fileWithLayers) {
+            callback(r)
+          }
+          this.fileWithLayers = r;
+        })
+      }
+    }
+  }
+
   // Download the pdf with all annotations.
   async downloadPdf() {
     if (!this.file || !this.fileName) {
@@ -346,6 +370,9 @@ export default class PDFGo {
 
   private initializeHandlers() {
     this.map.on("zoomend", this.onZoom, this);
+    this.map.on("layeradd", this.onChange, this);
+    this.map.on("layerremove", this.onChange, this);
+    this.map.on("keypress", this.onChange, this);
   }
 
   private initializeToolbar() {
