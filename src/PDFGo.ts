@@ -14,8 +14,10 @@ import { ColorClickCallback, colorPicker } from "./plugins/ColorPicker";
 
 import "./PDFGo.css";
 import { save } from "./plugins/Save";
+import JSONExporter from "./JSONExporter";
 
 type SaveClickCallback = (bytes?: Uint8Array) => Promise<void>;
+type ChangeCallback = () => void
 
 type SaveSettings = {
   // Callback for when the button is clicked.
@@ -46,6 +48,8 @@ type PDFGoProps = {
   // Initial zoom level
   // Default: -2
   zoom?: number;
+
+  onChange?: ChangeCallback;
 
   // The function that is called when the user performs a calibration.
   //
@@ -79,19 +83,28 @@ export default class PDFGo {
 
   private onColorClick?: ColorClickCallback;
 
+  private onChangeCallback?: ChangeCallback
+
   private saveSettings?: SaveSettings;
 
   // Width of canvas in map
   private canvasWidth: number = 0;
 
+  private changed: boolean = false;
+
   // File (PDF) to render
   private file?: Uint8Array;
+  private fileWithLayers?: Uint8Array;
 
   // File name to save the PDF with
   private fileName?: string;
 
   // Color picker color
   private color: string = "#3388ff";
+
+  private jsonExporter: JSONExporter
+
+  private changeTimer?: number;
 
   constructor({
     element,
@@ -102,6 +115,7 @@ export default class PDFGo {
     onCalibrate,
     onColorClick,
     saveSettings,
+    onChange
   }: PDFGoProps) {
     this.map = L.map(element, {
       zoom,
@@ -113,11 +127,14 @@ export default class PDFGo {
     });
     this.pageNumber = pageNumber;
     this.onCalibrate = onCalibrate;
+    this.onChangeCallback = onChange;
     this.measurements = new Measurements(this.map, this.onCalibrate);
     this.onColorClick = onColorClick;
     this.saveSettings = saveSettings;
     this.initializeHandlers();
     this.initializeToolbar();
+    this.onChange();
+    this.jsonExporter = new JSONExporter({map: this.map})
   }
 
   getColor(): string {
@@ -138,6 +155,16 @@ export default class PDFGo {
       { color },
       { merge: true, ignoreShapes: ["Ruler", "Calibrate", "Area"] }
     );
+  }
+
+  importFromJSON(json: string): void {
+    this.jsonExporter.import(json)
+    this.fileWithLayers = undefined
+    this.changed = false
+  }
+
+  getJSON(): string {
+    return this.jsonExporter.export()
   }
 
   // Load the file in the typed array. `name` is the name that
@@ -189,6 +216,27 @@ export default class PDFGo {
 
     // Re-set color (the button is redrawn so we need to re-set the style)
     this.setColor(this.color);
+  }
+
+  isChanged(): boolean {
+    return this.changed
+  }
+
+  onChange() {
+    if (this.changeTimer === undefined) {
+      this.changeTimer = setTimeout(() => {
+        if (this.file !== undefined) {
+          this.savePdf().then((r) => {
+            if (this.fileWithLayers !== undefined && r !== this.fileWithLayers) {
+              this.changed = true
+              this.onChangeCallback?.()
+            }
+            this.fileWithLayers = r;
+          })
+        }
+        this.changeTimer = undefined
+      }, 1000)
+    }
   }
 
   // Download the pdf with all annotations.
@@ -245,6 +293,8 @@ export default class PDFGo {
 
   private initializeHandlers() {
     this.map.on("zoomend", this.onZoom, this);
+    this.map.on("layeradd", this.onChange, this);
+    this.map.on("layerremove", this.onChange, this);
   }
 
   private initializeToolbar() {
