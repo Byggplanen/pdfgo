@@ -1,4 +1,4 @@
-import L, {PathOptions} from "leaflet";
+import L, {MarkerOptions, PathOptions} from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 
 import "./patches/fix-leaflet-marker";
@@ -14,10 +14,13 @@ import { ColorClickCallback, colorPicker } from "./plugins/ColorPicker";
 
 import "./PDFGo.css";
 import { save } from "./plugins/Save";
-import {cloudPolylineRenderer} from "./plugins/CloudPolyline/CloudPolylineRenderer";
+import {CloudPolylineRenderer, cloudPolylineRenderer} from "./plugins/CloudPolyline/CloudPolylineRenderer";
+import {arrowRenderer, ArrowRenderer} from "./plugins/Measure/ArrowRenderer";
+import Ruler from "./plugins/Measure/Ruler";
+import Area from "./plugins/Measure/Area";
 
 type SaveClickCallback = (bytes?: Uint8Array) => Promise<void>;
-type ChangeCallback = (bytes?: Uint8Array) => void
+type ChangeCallback = () => void
 
 type SaveSettings = {
   // Callback for when the button is clicked.
@@ -68,11 +71,23 @@ type PDFGoProps = {
   saveSettings?: SaveSettings;
 };
 
+type JSONRenderer = 'CloudPolylineRenderer' | 'ArrowRenderer'
+type JSONType = 'Circle' | 'Polyline' | 'Marker' | 'Polygon' | 'Circlemarker';
+type JSONShapeType = 'Area' | 'ArrowLine';
+
+type JSONShape = {
+  type?: JSONShapeType,
+  tooltip?: string
+}
+
 interface JSONLayer {
-  type?: string,
-  latLngs: any,
-  options: PathOptions | any
-  element?: any
+  type: JSONType | null,
+  latLngs?: any
+  options: PathOptions,
+  textMarker?: string
+  renderer: JSONRenderer | null
+  icon?: string
+  shape: JSONShape
 }
 
 export default class PDFGo {
@@ -102,13 +117,13 @@ export default class PDFGo {
   // File (PDF) to render
   private file?: Uint8Array;
 
-  private fileWithLayers?: Uint8Array;
-
   // File name to save the PDF with
   private fileName?: string;
 
   // Color picker color
   private color: string = "#3388ff";
+
+  private json: string = ''
 
   constructor({
     element,
@@ -162,95 +177,129 @@ export default class PDFGo {
 
   importFromJSON(json: string): void {
     JSON.parse(json).forEach((feature: JSONLayer) => {
-      switch (feature.options.renderer) {
+      const options: PathOptions = {...feature.options}
+
+      switch (feature.renderer) {
         case 'CloudPolylineRenderer':
-          feature.options.renderer = cloudPolylineRenderer(feature.options)
+          options.renderer = cloudPolylineRenderer(feature.options)
+          break;
+        case 'ArrowRenderer':
+          options.renderer = arrowRenderer(feature.options)
+          break;
+      }
+
+      if(feature.latLngs === undefined){
+        return;
       }
 
         switch (feature.type) {
           case "Circle":
-            new L.Circle(feature.latLngs, feature.options).addTo(this.map);
+            new L.Circle(feature.latLngs, options).addTo(this.map);
             break;
           case "Polyline":
-            new L.Polyline(feature.latLngs, feature.options).addTo(this.map);
+            const polyline = new L.Polyline(feature.latLngs, options)
+
+            if (feature.shape.tooltip !== undefined) {
+              polyline.setText(feature.shape.tooltip, Ruler.TEXT_OPTIONS)
+            }
+
+            polyline.addTo(this.map);
             break;
           case "Marker":
-            new L.Marker(feature.latLngs, feature.options).addTo(this.map);
+            const markerOptions = {...feature.options} as MarkerOptions
+            markerOptions.draggable = true
+
+            if (feature.textMarker !== undefined) {
+              markerOptions.textMarker = true;
+              markerOptions.text = feature.textMarker
+              markerOptions.icon = undefined;
+            } else {
+              markerOptions.icon = new L.Icon.Default()
+            }
+
+            const marker = new L.Marker(feature.latLngs, markerOptions)
+            marker.addTo(this.map);
             break;
           case "Polygon":
-            new L.Polygon(feature.latLngs, feature.options).addTo(this.map);
+            const polygon = new L.Polygon(feature.latLngs, options);
+
+            if (feature.shape.tooltip !== undefined) {
+              polygon.bindTooltip(feature.shape.tooltip, Area.TOOLTIP_OPTIONS)
+            }
+
+            polygon.addTo(this.map);
             break;
-          // case "Circlemarker":
-          //   new L.CircleMarker(feature.latLngs, feature.options).addTo(this.map);
-          //   break;
+          case "Circlemarker":
+            new L.CircleMarker(feature.latLngs, options).addTo(this.map);
+            break;
         }
       })
+    this.changed = false
   }
 
   getJSON(): string {
 
-    const json: any = []
+    const json: JSONLayer[] = []
 
-    //@TODO add text layer
     this.map.eachLayer(layer => {
-      console.log(layer)
-      if (layer instanceof L.Circle) {
-        const jsonLayer: JSONLayer = {
-          type: "Circle",
-          options: layer.options,
-          latLngs: layer.getBounds().getCenter()
-        }
-        json.push(jsonLayer);
+      if (!(layer instanceof L.Circle ||
+          layer instanceof L.Marker ||
+          layer instanceof L.CircleMarker ||
+          layer instanceof L.Polygon ||
+          layer instanceof L.Polyline)) {
+        return;
       }
 
-      if (layer instanceof L.Polyline) {
-        const options: any = layer.options;
-        if (layer.options.renderer !== undefined) {
-          options.renderer = 'CloudPolylineRenderer'
+      const jsonLayer: JSONLayer = {
+        type: null,
+        options: layer.options,
+        renderer: null,
+        shape: {
+          type: undefined,
+          tooltip: undefined
         }
-        const jsonLayer: JSONLayer = {
-          type: "Polyline",
-          options: options,
-          latLngs: layer.getLatLngs()
-        }
-        json.push(jsonLayer);
-      }
-
-      if (layer instanceof L.Marker) {
-        console.log(layer.options.icon);
-        const jsonLayer: JSONLayer = {
-          type: "Marker",
-          options: layer.options,
-          latLngs: layer.getLatLng(),
-          element: layer.options.icon instanceof L.DivIcon ? (layer.options.icon.options.html as HTMLTextAreaElement).value : undefined
-        }
-        json.push(jsonLayer);
       }
 
       if (layer instanceof L.CircleMarker) {
-        const jsonLayer: JSONLayer = {
-          type: "Circlemarker",
-          options: layer.options,
-          latLngs: layer.getLatLng()
+        if (layer instanceof L.Circle) {
+          jsonLayer.type = "Circle"
+          jsonLayer.latLngs = layer.getBounds().getCenter()
+        } else {
+          jsonLayer.type = "Circlemarker"
+          jsonLayer.latLngs = layer.getLatLng()
         }
-        json.push(jsonLayer);
+      } else if (layer instanceof L.Polyline) {
+        if (layer.options.renderer instanceof CloudPolylineRenderer) {
+          jsonLayer.renderer = 'CloudPolylineRenderer'
+        } else if(layer.options.renderer instanceof ArrowRenderer) {
+          jsonLayer.renderer = 'ArrowRenderer'
+          jsonLayer.shape.tooltip = layer._text
+        }
+        if (layer.getTooltip() !== undefined) {
+          jsonLayer.shape.tooltip = layer.getTooltip()?.getContent()?.toString()
+        }
+        jsonLayer.latLngs = layer.getLatLngs()
+        jsonLayer.options.renderer = undefined
+        if (layer instanceof L.Polygon) {
+          jsonLayer.type = "Polygon"
+        } else {
+          jsonLayer.type = "Polyline"
+        }
+      } else if (layer instanceof L.Marker) {
+        jsonLayer.type = "Marker"
+        jsonLayer.latLngs = layer.getLatLng()
+        if (layer.options.icon instanceof L.DivIcon) {
+          const html = layer.options.icon.options.html as HTMLTextAreaElement
+          jsonLayer.textMarker =  html.value
+        }
       }
 
-      if (layer instanceof L.Polygon) {
-        const options: any = layer.options;
-        if (layer.options.renderer !== undefined) {
-          options.renderer = 'CloudPolylineRenderer'
-        }
-        const jsonLayer: JSONLayer = {
-          type: "Polygon",
-          options: options,
-          latLngs: layer.getLatLngs()
-        }
-        json.push(jsonLayer);
-      }
+      json.push(jsonLayer);
     })
 
-    return JSON.stringify(json)
+    this.json = JSON.stringify(json)
+
+    return this.json
   }
 
   // Load the file in the typed array. `name` is the name that
@@ -307,17 +356,16 @@ export default class PDFGo {
   isChanged(): boolean {
     return this.changed
   }
+
   onChange() {
     const callback = this.onChangeCallback
-    if (callback !== undefined) {
-      if(this.file !== undefined){
-        this.savePdf().then((r) => {
-          if (this.fileWithLayers !== undefined && r !== this.fileWithLayers) {
-            this.changed = true
-            callback(r)
-          }
-          this.fileWithLayers = r;
-        })
+
+    if(this.file !== undefined && this.json.length > 0){
+      const oldJson = this.json
+      const json = this.getJSON()
+      if (json !== oldJson) {
+        this.changed = true
+        callback?.()
       }
     }
   }
