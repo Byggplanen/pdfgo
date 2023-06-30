@@ -8,6 +8,7 @@ const ACTUAL_LENGTH = "20m";
 /// ELEMENTS
 const map = document.querySelector<HTMLDivElement>("#map")!;
 const inputEl = document.querySelector<HTMLInputElement>("#pdf-input")!;
+ const json1= '[{"type":"Circle","options":{"color":"#3388ff","radius":206.18438350175796,"pane":"overlayPane"},"renderer":null,"shape":{},"latLngs":{"lat":508,"lng":392}},{"type":"Circle","options":{"color":"#3388ff","radius":258.549801779077,"pane":"overlayPane"},"renderer":null,"shape":{},"latLngs":{"lat":480,"lng":884}}]';
 
 // GLOBALS
 const pdfGo = new PDFGo({
@@ -18,6 +19,8 @@ const pdfGo = new PDFGo({
   saveSettings: {
     download: false,
     onClick: function () {
+      console.log(pdfGo.getJSON())
+      console.log(pdfGo.isChanged())
       return Promise.resolve()
     }
   },
@@ -33,6 +36,7 @@ function onFileChange() {
   fileReader.onload = function handleLoad() {
     const typedArray = new Uint8Array(this.result as ArrayBufferLike);
     pdfGo.loadFile(typedArray, file.name);
+     pdfGo.importFromJSON(json1);
   };
   fileReader.readAsArrayBuffer(file);
 }

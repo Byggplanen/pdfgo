@@ -94,6 +94,7 @@ export default class PDFGo {
 
   // File (PDF) to render
   private file?: Uint8Array;
+  private fileWithLayers?: Uint8Array;
 
   // File name to save the PDF with
   private fileName?: string;
@@ -101,9 +102,9 @@ export default class PDFGo {
   // Color picker color
   private color: string = "#3388ff";
 
-  private json: string = ''
-
   private jsonExporter: JSONExporter
+
+  private changeTimer?: number;
 
   constructor({
     element,
@@ -158,13 +159,12 @@ export default class PDFGo {
 
   importFromJSON(json: string): void {
     this.jsonExporter.import(json)
+    this.fileWithLayers = undefined
     this.changed = false
   }
 
   getJSON(): string {
-    this.json = this.jsonExporter.export()
-
-    return this.json
+    return this.jsonExporter.export()
   }
 
   // Load the file in the typed array. `name` is the name that
@@ -223,15 +223,19 @@ export default class PDFGo {
   }
 
   onChange() {
-    const callback = this.onChangeCallback
-
-    if(this.file !== undefined && this.json.length > 0){
-      const oldJson = this.json
-      const json = this.getJSON()
-      if (json !== oldJson) {
-        this.changed = true
-        callback?.()
-      }
+    if (this.changeTimer === undefined) {
+      this.changeTimer = setTimeout(() => {
+        if (this.file !== undefined) {
+          this.savePdf().then((r) => {
+            if (this.fileWithLayers !== undefined && r !== this.fileWithLayers) {
+              this.changed = true
+              this.onChangeCallback?.()
+            }
+            this.fileWithLayers = r;
+          })
+        }
+        this.changeTimer = undefined
+      }, 1000)
     }
   }
 
@@ -291,7 +295,6 @@ export default class PDFGo {
     this.map.on("zoomend", this.onZoom, this);
     this.map.on("layeradd", this.onChange, this);
     this.map.on("layerremove", this.onChange, this);
-    this.map.on("keypress", this.onChange, this);
   }
 
   private initializeToolbar() {

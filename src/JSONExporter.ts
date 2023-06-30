@@ -123,7 +123,7 @@ export default class JSONExporter {
       if (layer instanceof L.CircleMarker) {
         if (layer instanceof L.Circle) {
           jsonLayer.type = "Circle"
-          jsonLayer.latLngs = layer.getBounds().getCenter()
+          jsonLayer.latLngs = layer.getLatLng()
         } else {
           jsonLayer.type = "Circlemarker"
           jsonLayer.latLngs = layer.getLatLng()
