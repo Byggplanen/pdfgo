@@ -37,7 +37,7 @@ export default class JSONExporter {
 
   import(json: string): void {
     JSON.parse(json).forEach((feature: JSONLayer) => {
-      const options: PathOptions = {...feature.options}
+      const options: PathOptions = feature.options
 
       switch (feature.renderer) {
         case 'CloudPolylineRenderer':
@@ -108,10 +108,11 @@ export default class JSONExporter {
           layer instanceof L.Polyline)) {
         return;
       }
+      const opts = {...layer.options}
 
       const jsonLayer: JSONLayer = {
         type: null,
-        options: layer.options,
+        options: opts,
         renderer: null,
         shape: {
           type: undefined,
