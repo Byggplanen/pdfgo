@@ -16,10 +16,7 @@ const pdfGo = new PDFGo({
     pdfGo.adjustScale(length, ACTUAL_LENGTH);
   },
   saveSettings: {
-    download: false,
-    onClick: function () {
-      return Promise.resolve()
-    }
+    download: true
   },
 });
 
