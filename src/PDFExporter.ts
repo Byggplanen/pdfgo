@@ -43,8 +43,7 @@ type PDFExporterProps = {
   canvasWidth: number;
 };
 
-type FeatureProperties = {
-  shape:
+type Shape =
     | "Rectangle"
     | "Marker"
     | "Circle"
@@ -54,7 +53,10 @@ type FeatureProperties = {
     | "CloudPolygon"
     | "Ruler"
     | "Area";
+export type FeatureProperties = {
+  shape: Shape
 
+  fallbackShape?: Shape //Leaflet overrides shape and it's not possible to set it correctly, so this shape considered as priority
   // Color of the shape
   color: RGB;
 
@@ -157,6 +159,7 @@ export default class PDFExporter {
     const geoPdf = this.geoJSONToPDFCoords(geo, page);
 
     const operators: PDFOperator[] = [];
+    console.log(geoPdf)
 
     for await (const feature of geoPdf.features) {
       switch (feature.properties.shape) {
@@ -567,7 +570,7 @@ export default class PDFExporter {
     const { width: pageWidth, height: pageHeight } = page.getMediaBox();
     const features = layers.map((layer) => {
       const geo = layer.toGeoJSON();
-      geo.properties.shape = layer.pm.getShape();
+      geo.properties.shape = geo.properties.fallbackShape !== undefined ? geo.properties.fallbackShape : layer.pm.getShape();
       geo.properties.color = PDFExporter.DEFAULT_COLOR;
 
       const options = layer.options as L.PathOptions;

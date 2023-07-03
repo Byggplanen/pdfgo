@@ -4,6 +4,7 @@ import {CloudPolylineRenderer, cloudPolylineRenderer} from "./plugins/CloudPolyl
 import {ArrowRenderer, arrowRenderer} from "./plugins/Measure/ArrowRenderer";
 import Ruler from "./plugins/Measure/Ruler";
 import Area from "./plugins/Measure/Area";
+import {FeatureProperties} from "./PDFExporter";
 
 type JSONRenderer = 'CloudPolylineRenderer' | 'ArrowRenderer'
 type JSONType = 'Circle' | 'Polyline' | 'Marker' | 'Polygon' | 'Circlemarker';
@@ -61,6 +62,13 @@ export default class JSONExporter {
 
           if (feature.shape.tooltip !== undefined) {
             polyline.setText(feature.shape.tooltip, Ruler.TEXT_OPTIONS)
+            polyline.feature =  {
+              type: "Feature",
+              properties: {
+                fallbackShape: "Ruler",
+                text: feature.shape.tooltip
+              }
+            } as GeoJSON.Feature<GeoJSON.LineString, FeatureProperties>;
           }
 
           polyline.addTo(this.map);
@@ -85,6 +93,23 @@ export default class JSONExporter {
 
           if (feature.shape.tooltip !== undefined) {
             polygon.bindTooltip(feature.shape.tooltip, Area.TOOLTIP_OPTIONS)
+            polygon.feature = {
+              type: "Feature",
+              properties: {
+                fallbackShape: "Area",
+                text: feature.shape.tooltip
+              }
+            } as GeoJSON.Feature<GeoJSON.MultiPolygon, FeatureProperties>;
+          }
+
+          if (options.renderer instanceof CloudPolylineRenderer) {
+            polygon.feature = {
+              type: "Feature",
+              properties: {
+                fallbackShape: "CloudPolygon",
+                text: feature.shape.tooltip
+              }
+            } as GeoJSON.Feature<GeoJSON.MultiPolygon, FeatureProperties>;
           }
 
           polygon.addTo(this.map);
