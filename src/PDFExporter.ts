@@ -159,7 +159,6 @@ export default class PDFExporter {
     const geoPdf = this.geoJSONToPDFCoords(geo, page);
 
     const operators: PDFOperator[] = [];
-    console.log(geoPdf)
 
     for await (const feature of geoPdf.features) {
       switch (feature.properties.shape) {
